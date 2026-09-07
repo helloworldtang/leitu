@@ -1,6 +1,6 @@
 # 架构状态（4R 四图）
 
-> 自动生成（`make export`），勿手改。数据源：catalog/problems.json + 边界规则测试。
+> 自动生成（`java scripts/ExportArchitecture.java`），勿手改。数据源：catalog/problems.json + 边界规则测试。
 
 ## Rank——顶层结构（双平面）
 
@@ -76,7 +76,7 @@ graph LR
 
 | 规则 | 守什么 |
 |---|---|
-| `core_零框架依赖_只依赖JDK与自身` | core 是端口面+调度机制，零框架依赖（ADR-002/ADR-003）；中间件只准出现在 adapter 层 |
-| `internal_只被core内部访问` | internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与未来模块只准用 api/spi/model |
-| `make verify` | 编译 + 测试 + 边界规则一条命令（AGENTS.md 完成判据） |
-| `scripts/export_architecture.py` | 本视图的再生成（catalog 变更后跑） |
+| `core_` | core 是端口面+调度机制，零框架依赖（ADR-002/ADR-003）；中间件只准出现在 adapter 层 |
+| `internal_` | internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与未来模块只准用 api/spi/model |
+| `./mvnw verify` | 编译 + 测试 + 边界规则一条命令（AGENTS.md 完成判据） |
+| `java scripts/ExportArchitecture.java` | 本视图的再生成（catalog 变更后跑） |

@@ -63,5 +63,31 @@
         </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>enforce-jdk-and-maven</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireJavaVersion>
+                  <version>[21,)</version>
+                </requireJavaVersion>
+                <requireMavenVersion>
+                  <version>[3.9,)</version>
+                </requireMavenVersion>
+              </rules>
+              <message>leitu 需要 JDK 21+ 与 Maven 3.9+（唯一的机器依赖）。修复：macOS 执行 export JAVA_HOME="$(/usr/libexec/java_home -v 21)"；Linux 用 SDKMAN 安装并设置 JAVA_HOME；CI 由 setup-java 提供。构建命令：./mvnw verify</message>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
   </build>
 </project>

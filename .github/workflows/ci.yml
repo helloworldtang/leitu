@@ -10,4 +10,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - run: mvn -B verify
+      - run: ./mvnw -B verify
+      # 防漂移：重新生成 4R 视图，与提交版本不一致即失败（AI 资产进 CI）
+      - run: java scripts/ExportArchitecture.java
+      - run: git diff --exit-code docs/architecture
