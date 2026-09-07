@@ -21,13 +21,18 @@
       "problem": "谁在操作？代表谁（租户）？这次调用的链路标识是什么？",
       "facet": "pipeline",
       "required": "always",
-      "status": "open",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.1.0",
       "replaced_by": null,
       "depends_on": [],
-      "sub_questions": ["身份、租户、trace 三者束成一组上下文"],
-      "links": { "doc": null, "code": null, "rule": null, "example": null }
+      "sub_questions": ["身份、租户、trace 三者束成一组上下文", "操作者三态：HUMAN / SYSTEM / AGENT"],
+      "links": {
+        "doc": "docs/problems/who-is-operating.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.context",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/who-is-operating"
+      }
     },
     {
       "id": "allow-or-not",

@@ -15,6 +15,7 @@
   <modules>
     <module>leitu-core</module>
     <module>examples/allow-or-not</module>
+    <module>examples/who-is-operating</module>
   </modules>
 
   <properties>

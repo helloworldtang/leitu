@@ -5,6 +5,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -22,11 +23,9 @@ class CoreBoundaryRulesTest {
             .because("core 是端口面+调度机制，零框架依赖（ADR-002/ADR-003）；中间件只准出现在 adapter 层");
 
     @ArchTest
-    static final ArchRule internal_包不被本域之外的代码依赖 = noClasses()
-            .that().resideOutsideOfPackage("cn.youhuale.leitu.core.guard..")
-            .should().dependOnClassesThat()
-            .resideInAPackage("cn.youhuale.leitu.core.guard.internal..")
-            .because("internal 只经 api 的工厂方法触达（GLOSSARY：工厂方法隔离 internal）")
-            // 目前 core 只有 guard 一个域，"guard 之外"暂无类——规则为后续域（config/context/...）预设，放行空检查
-            .allowEmptyShould(true);
+    static final ArchRule internal_只被core内部访问 = classes()
+            .that().resideInAPackage("cn.youhuale.leitu.core..internal..")
+            .should().onlyHaveDependentClassesThat()
+            .resideInAPackage("cn.youhuale.leitu.core..")
+            .because("internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与未来模块只准用 api/spi/model");
 }
