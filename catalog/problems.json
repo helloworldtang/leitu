@@ -123,7 +123,7 @@
       "problem": "模块间怎么协作？",
       "facet": "pipeline",
       "required": "conditional",
-      "status": "drafted",
+      "status": "open",
       "stability": null,
       "since": null,
       "replaced_by": null,

@@ -39,8 +39,9 @@
 
 ## 验证
 
-- **唯一构建入口：`./mvnw verify`**（编译 + 测试 + ArchUnit 边界规则）。机器依赖只有 JDK 21——版本不对会被 enforcer 带着修复说明拦下。
-- 架构状态导出：`java scripts/ExportArchitecture.java`（JDK 单文件直接运行，无其他依赖；catalog 变更后跑，再生成 4R 视图）。
+- **唯一构建入口：`./mvnw verify`**（编译 + 测试 + 边界规则 + **catalog 完整性 + markdown 链接检查**）。机器依赖只有 JDK 21——版本不对会被 enforcer 带着修复说明拦下。
+- **answered 的宣告权在机器**：`CatalogIntegrityTest`（leitu-rules）校验五件套真实存在、枚举合法、依赖图无孤儿、全仓相对链接有效——不满足的 answered/drafted 会让构建红灯。
+- 架构状态导出：`java scripts/ExportArchitecture.java`（JDK 单文件直接运行，无其他依赖；catalog 变更后跑，再生成 4R 视图；CI 侧另有 staleness 检查）。
 
 ## 评测与工具（占位，规划中）
 

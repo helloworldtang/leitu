@@ -31,7 +31,7 @@ flowchart TB
 | who-cares | pipeline | conditional | ⬜ open | 谁关心这个事件？ |
 | duplicate-request | pipeline | conditional | ⬜ open | 同一请求来两次怎么办（幂等）？ |
 | data-changed-by-whom | pipeline | conditional | ⬜ open | 数据被谁改的、能回放吗（审计）？ |
-| module-collaboration | pipeline | conditional | 📝 drafted | 模块间怎么协作？ |
+| module-collaboration | pipeline | conditional | ⬜ open | 模块间怎么协作？ |
 | transaction-boundary | pipeline | conditional | ⬜ open | 事务边界在哪，提交后做什么？ |
 | data-access | capability | conditional | ⬜ open | 业务数据怎么读写（审计字段、租户隔离、数据权限）？ |
 | identity | capability | conditional | ⬜ open | 操作者身份怎么解析与建模（身份源、操作者模型）？ |
