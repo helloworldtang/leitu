@@ -15,8 +15,10 @@
   <modules>
     <module>leitu-core</module>
     <module>leitu-rules</module>
+    <module>leitu-capability-access</module>
     <module>examples/allow-or-not</module>
     <module>examples/who-is-operating</module>
+    <module>examples/access</module>
   </modules>
 
   <properties>
@@ -49,6 +51,11 @@
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>cn.youhuale</groupId>
+        <artifactId>leitu-capability-access</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>

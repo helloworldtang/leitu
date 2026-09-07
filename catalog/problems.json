@@ -178,13 +178,18 @@
       "problem": "访问判定的成套答案（判定链用法 + 权限类 Guards）",
       "facet": "capability",
       "required": "conditional",
-      "status": "drafted",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "stable",
+      "since": "0.1.0",
       "replaced_by": null,
       "depends_on": ["who-is-operating"],
       "notes": "回答管道问题 allow-or-not 的成套答案。限流/配额为 guard 型能力，走准入流程先 experimental。见 ADR-005。",
-      "links": { "doc": "docs/problems/allow-or-not.md", "code": null, "rule": null, "example": null }
+      "links": {
+        "doc": "docs/problems/allow-or-not.md",
+        "code": "leitu-capability-access:cn.youhuale.leitu.capability.access",
+        "rule": "leitu-rules:RepoBoundaryRulesTest",
+        "example": "examples/access"
+      }
     },
     {
       "id": "cache",

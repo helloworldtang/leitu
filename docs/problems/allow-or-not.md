@@ -39,7 +39,7 @@ public record Decision(Verdict verdict, String reason, Retry retry) {
 - **双执行点，同一协议**：入口判定链（进来的请求：权限/限流/风控）；出站判定链（调出去的请求：熔断/预算）
 - **安全默认**：deny-by-default，显式放行——宁可起步多配一行，不可默认裸奔
 - **兜底**：未装配任何 Guard 时，安全维度的默认答案是否决（分维度默认值，见 GLOSSARY）
-- **成套答案**：`leitu-capability-access`（规划）提供权限类 Guards 与判定链的标准用法；限流/配额为 guard 型能力（先 experimental）
+- **成套答案**：`leitu-capability-access`（已交付 0.1.0）——`PermissionPolicy` 扩展缝（换模型零改业务）+ 声明式 RBAC-lite（`RoleMap` 一张表查全部真相）+ 预算 Guard（`BudgetSpec`，耗尽带重试语义）参考实现；限流/配额沿扩展缝接入
 
 ## 三、取舍
 

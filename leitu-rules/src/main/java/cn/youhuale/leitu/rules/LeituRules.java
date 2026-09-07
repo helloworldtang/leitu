@@ -36,6 +36,13 @@ public final class LeituRules {
             .resideInAPackage("cn.youhuale.leitu.core..")
             .because("internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与外部只准用 api/spi/model");
 
+    /** capability 的 internal 同理：只被本能力模块访问。新能力模块落地时在此扩展同款规则。 */
+    public static final ArchRule INTERNAL_只被本能力模块访问 = classes()
+            .that().resideInAPackage("cn.youhuale.leitu.capability.access..internal..")
+            .should().onlyHaveDependentClassesThat()
+            .resideInAPackage("cn.youhuale.leitu.capability.access..")
+            .because("能力模块的 internal 同样只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model");
+
     /** 各金样本相互独立：examples 是平行的示范，彼此不依赖（同一样本内部的依赖不受限）。 */
     public static final ArchRule EXAMPLES_相互独立 =
             com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices()

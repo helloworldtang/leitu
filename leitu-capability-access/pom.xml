@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>cn.youhuale</groupId>
+    <artifactId>leitu-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>leitu-capability-access</artifactId>
+  <name>leitu-capability-access</name>
+  <description>"允许吗"的成套答案：PermissionPolicy 扩展缝 + 声明式 RBAC-lite 默认实现 + 预算 Guard 参考实现。纯 Java。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

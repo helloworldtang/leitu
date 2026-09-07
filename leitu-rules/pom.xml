@@ -39,6 +39,17 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-capability-access</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-example-access</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
