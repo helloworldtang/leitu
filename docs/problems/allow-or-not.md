@@ -1,6 +1,6 @@
 # 允许吗（allow-or-not）
 
-> catalog：pipeline ｜ required: always ｜ status: drafted ｜ depends_on: who-is-operating
+> catalog：pipeline ｜ required: always ｜ status: answered（stability: frozen，since 0.1.0） ｜ depends_on: who-is-operating
 
 ## 一、为什么
 
@@ -24,7 +24,7 @@
 **判定链**：一串可插拔 Guard，任一可否决，输出统一 Decision。
 
 ```java
-// 接口草案——阶段二定稿
+// 已实现：leitu-core 的 cn.youhuale.leitu.core.guard 包
 public interface Guard {
     Decision check(AccessRequest request);
 }
@@ -55,5 +55,5 @@ public record Decision(Verdict verdict, String reason, Retry retry) {
 
 - 不适用：无调用方语义的纯内部批处理
 - 网关层防护与应用内判定链是**纵深关系**，不互替
-- 待定（实现前决）：Guard 注册顺序语义——首否决即断 vs 全量评估并报
-- 关联：ADR-005；能力答案见 catalog 条目 `access`
+- Guard 顺序语义已定：**首个否决即返回**（fail-fast）；需要全量评估的场景由调用方组合 Guard 自行实现
+- 关联：ADR-005；能力答案见 catalog 条目 `access`（权限类 Guards 成套方案，待建）

@@ -34,13 +34,18 @@
       "problem": "这次访问（或出站调用）允许吗？",
       "facet": "pipeline",
       "required": "always",
-      "status": "drafted",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.1.0",
       "replaced_by": null,
       "depends_on": ["who-is-operating"],
       "sub_questions": ["判定链：功能权限 / 数据权限 / 限流 / 配额 / 熔断 / 维护窗口 / 风控，任一 Guard 可否决"],
-      "links": { "doc": "docs/problems/allow-or-not.md", "code": null, "rule": null, "example": null }
+      "links": {
+        "doc": "docs/problems/allow-or-not.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.guard",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/allow-or-not"
+      }
     },
     {
       "id": "what-happened",
