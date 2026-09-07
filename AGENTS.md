@@ -41,3 +41,9 @@
 
 - 文档阶段：catalog 条目与 links 指向的文件必须存在（人工核；`make verify` 待代码阶段建立）。
 - 代码阶段（规划）：`make verify` = 编译 + 测试 + ArchUnit 边界规则 + catalog 完整性检查。
+
+## 评测与工具（占位，规划中）
+
+- `eval/`：AI 生产力基准——标准任务集 + 完成率/时长/一次绿灯率（证明"确定性 foundation"主张的实证义务）
+- 最小上下文规格：一个全新 agent 学会本项目、正确写出第一个答案所需的最小阅读集（目标 ≤5 文件）
+- 架构状态导出：catalog → 4R 四图（Rank 双平面 / Role 职责 / Relation 依赖图 / Rule 规则清单）
