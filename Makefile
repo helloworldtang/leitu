@@ -1,4 +1,4 @@
-.PHONY: verify test clean
+.PHONY: verify test export clean
 
 # JDK 21（macOS 自动探测；CI 由 setup-java 保证；其他环境请自带 JAVA_HOME）
 JAVA_HOME_21 := $(shell /usr/libexec/java_home -v 21 2>/dev/null)
@@ -9,6 +9,10 @@ verify:
 
 test:
 	JAVA_HOME="$(JAVA_HOME_21)" mvn -q test
+
+# 架构状态导出：catalog → 4R 四图（catalog 变更后跑）
+export:
+	python3 scripts/export_architecture.py
 
 clean:
 	JAVA_HOME="$(JAVA_HOME_21)" mvn -q clean
