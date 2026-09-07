@@ -1,7 +1,7 @@
 package cn.youhuale.leitu.examples.context;
 
 import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
-import cn.youhuale.leitu.core.context.internal.ThreadLocalBinder;
+import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
 import cn.youhuale.leitu.core.context.model.ExecutionContext;
 import cn.youhuale.leitu.core.context.model.Operator;
 import cn.youhuale.leitu.core.guard.api.GuardChain;
@@ -17,7 +17,7 @@ import java.util.Set;
 public final class Demo {
 
     public static void main(String[] args) {
-        var binder = ThreadLocalBinder.shared();
+        var binder = ExecutionContextBinders.threadLocal();
         ExecutionContextReader who = ExecutionContextReader.threadLocal();
 
         // 1) 入口未绑定 → 匿名兜底（不抛异常，观测有 traceId）

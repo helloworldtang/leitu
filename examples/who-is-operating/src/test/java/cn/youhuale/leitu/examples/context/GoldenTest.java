@@ -1,8 +1,9 @@
 package cn.youhuale.leitu.examples.context;
 
 import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
-import cn.youhuale.leitu.core.context.internal.ThreadLocalBinder;
+import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
 import cn.youhuale.leitu.core.context.model.ExecutionContext;
+import cn.youhuale.leitu.core.context.spi.ExecutionContextBinder;
 import cn.youhuale.leitu.core.context.model.Operator;
 import cn.youhuale.leitu.core.guard.api.GuardChain;
 import cn.youhuale.leitu.core.guard.model.AccessRequest;
@@ -16,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /** 金测试：锁定执行上下文的标准用法语义。core 的任何改动让这里变红，即破坏了既有答案。 */
 class GoldenTest {
 
-    private final ThreadLocalBinder binder = ThreadLocalBinder.shared();
+    private final ExecutionContextBinder binder = ExecutionContextBinders.threadLocal();
     private final ExecutionContextReader who = ExecutionContextReader.threadLocal();
 
     @Test

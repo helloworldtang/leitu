@@ -1,6 +1,5 @@
 package cn.youhuale.leitu.core.context.api;
 
-import cn.youhuale.leitu.core.context.internal.ThreadLocalBinder;
 import cn.youhuale.leitu.core.context.model.ExecutionContext;
 import cn.youhuale.leitu.core.context.spi.ExecutionContextBinder;
 
@@ -29,6 +28,6 @@ public interface ExecutionContextReader {
 
     /** 默认实现：线程级绑定（业务可注入；测试可换任意 fake binder）。 */
     static ExecutionContextReader threadLocal() {
-        return ThreadLocalBinder.shared()::current;
+        return ExecutionContextBinders.threadLocal()::current;
     }
 }
