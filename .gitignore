@@ -1,0 +1,18 @@
+# build
+target/
+dist/
+node_modules/
+
+# ide
+.idea/
+*.iml
+.vscode/
+
+# os
+.DS_Store
+
+# maven
+.flattened-pom.xml
+
+# local
+.claude/settings.local.json
