@@ -16,11 +16,13 @@
     <module>leitu-core</module>
     <module>leitu-rules</module>
     <module>leitu-capability-access</module>
+    <module>leitu-capability-data</module>
     <module>examples/allow-or-not</module>
     <module>examples/who-is-operating</module>
     <module>examples/access</module>
     <module>examples/what-happened</module>
     <module>examples/config-source</module>
+    <module>examples/data-access</module>
   </modules>
 
   <properties>
@@ -58,6 +60,11 @@
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-capability-access</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>cn.youhuale</groupId>
+        <artifactId>leitu-capability-data</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>
@@ -107,7 +114,7 @@
   </build>
 
   <profiles>
-    <!-- 发布到 Maven Central（Central Portal）：发布集合 = leitu-parent(pom) + core + rules + capability-access，
+    <!-- 发布到 Maven Central（Central Portal）：发布集合 = leitu-parent(pom) + core + rules + capability-access + capability-data，
          examples 不发布。需要凭据：settings 的 server id=central（User Token）+ GPG 签名。触发方式见 .github/workflows/release.yml -->
     <profile>
       <id>release</id>

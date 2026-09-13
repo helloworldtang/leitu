@@ -17,7 +17,7 @@ flowchart TB
   CO -. 答案五件套锚定 .-> CAT
 ```
 
-覆盖度：**5 / 20** 已答（管道题 14 条，能力题 6 条）。
+覆盖度：**6 / 20** 已答（管道题 14 条，能力题 6 条）。
 
 ## Role——各区职责与状态
 
@@ -33,7 +33,7 @@ flowchart TB
 | data-changed-by-whom | pipeline | conditional | ⬜ open | 数据被谁改的、能回放吗（审计）？ |
 | module-collaboration | pipeline | conditional | ⬜ open | 模块间怎么协作？ |
 | transaction-boundary | pipeline | conditional | ⬜ open | 事务边界在哪，提交后做什么？ |
-| data-access | capability | conditional | ⬜ open | 业务数据怎么读写（审计字段、租户隔离、数据权限）？ |
+| data-access | capability | conditional | ✅ answered | 业务数据怎么读写（审计字段、租户隔离、数据权限）？ |
 | identity | capability | conditional | ⬜ open | 操作者身份怎么解析与建模（身份源、操作者模型）？ |
 | access | capability | conditional | ✅ answered | 访问判定的成套答案（判定链用法 + 权限类 Guards） |
 | cache | capability | conditional | ⬜ open | 怎么缓存（可观测、可替换：进程内 / Redis）？ |
@@ -72,6 +72,7 @@ graph LR
   class who-is-operating answered
   class allow-or-not answered
   class what-happened answered
+  class data-access answered
   class access answered
   classDef answered fill:#d4edda,stroke:#2e7d32
 ```

@@ -45,6 +45,11 @@
     </dependency>
     <dependency>
       <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-capability-data</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
       <artifactId>leitu-example-access</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
@@ -58,6 +63,12 @@
     <dependency>
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-example-config-source</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-example-data-access</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>

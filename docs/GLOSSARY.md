@@ -59,6 +59,17 @@
 | **优先级=组合顺序** | 配置源不各自声明优先级（无序号/注解）；`ConfigReader.of(源…)` 参数顺序即优先级，装配处一处可见（toString 印出全链）。 |
 | **值不上诊断面** | 配置的安全教义：toString 与一切异常只含 key 与源名，永不携带配置值——无豁免，为秘密源（secrets-split，待答）留缝，被单测锁死。 |
 
+## 数据
+
+| 术语 | 定义 |
+|---|---|
+| **数据存取器（DataStore）** | "业务数据怎么读写"的标准答案面：save / findById / deleteById / findAll 四操作，合同=每一步租户作用域 + 审计盖章（ArchUnit 看不见 SQL——合同 + 金样本双保险）。真库由 adapter 实现；内存实现为兜底（重启即失，toString 大声标注）。不叫 Repository：不承诺聚合根语义与派生查询。见 ADR-010。 |
+| **审计四件套（AuditFields）** | createdBy / createdAt / updatedBy / updatedAt——数据行的事实性元数据，成对两态（全空=新实体，全满=已盖章），构造期强制。盖章权在存取器：插入章四件套全新，更新章保留 createdBy/createdAt；软删除与乐观锁是策略不是事实，留缝不入 v1。 |
+| **可审计（Auditable）** | 实体自证审计携带方式的接口：auditFields() 读 + withAuditFields() 盖章拷贝（record 一行 wither，协变返回具体类型）。实体只声明携带，不声明盖章时机与内容。 |
+| **租户是作用域不是字段** | 租户从执行上下文来，不由实体携带——行归属在写入时定（键=（租户，主键），跨租户同主键是两行）；"-" 是系统级作用域，不是全局通配。 |
+| **数据权限走判定链** | 单资源判定=AccessRequest.resource 携数据主键的 Guard（判定链已有协议）；列表行过滤（查询条件注入）是查询优化，属 adapter——不造规则翻译器。 |
+| **观察存取器（ObservingDataStore）** | opt-in 装饰器：给任一存取器记 data.* 观测事件（data.saved / data.read.hit / data.read.miss / data.deleted.hit / data.deleted.miss / data.listed），装配处组合，默认不记；异常路径不记事件（failure-response 的地盘）。 |
+
 ## 制度
 
 | 术语 | 定义 |

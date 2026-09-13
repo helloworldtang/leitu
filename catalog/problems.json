@@ -162,13 +162,20 @@
       "problem": "业务数据怎么读写（审计字段、租户隔离、数据权限）？",
       "facet": "capability",
       "required": "conditional",
-      "status": "open",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "stable",
+      "since": "0.2.0",
       "replaced_by": null,
       "depends_on": ["who-is-operating", "allow-or-not", "what-happened"],
-      "sub_questions": [],
-      "links": { "doc": null, "code": null, "rule": null, "example": null }
+      "sub_questions": ["审计四件套：谁建/何时建/谁改/何时改（软删除与乐观锁是策略，留缝）",
+                        "租户是作用域不是实体字段——行归属在写入时定",
+                        "数据权限：单资源判定走判定链（resource=数据主键）；列表行过滤属 adapter"],
+      "links": {
+        "doc": "docs/problems/data-access.md",
+        "code": "leitu-capability-data:cn.youhuale.leitu.capability.data",
+        "rule": "leitu-rules:RepoBoundaryRulesTest",
+        "example": "examples/data-access"
+      }
     },
     {
       "id": "identity",

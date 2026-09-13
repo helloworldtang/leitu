@@ -36,12 +36,19 @@ public final class LeituRules {
             .resideInAPackage("cn.youhuale.leitu.core..")
             .because("internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与外部只准用 api/spi/model");
 
-    /** capability 的 internal 同理：只被本能力模块访问。新能力模块落地时在此扩展同款规则。 */
-    public static final ArchRule INTERNAL_只被本能力模块访问 = classes()
-            .that().resideInAPackage("cn.youhuale.leitu.capability.access..internal..")
-            .should().onlyHaveDependentClassesThat()
-            .resideInAPackage("cn.youhuale.leitu.capability.access..")
-            .because("能力模块的 internal 同样只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model");
+    /** capability 的 internal 同理：只被本能力模块访问。新能力模块落地时在此扩展同款规则（见下方 data 同款）。 */
+    public static final ArchRule INTERNAL_只被本能力模块访问 = capabilityInternal只被本模块访问("capability.access");
+
+    /** data 能力同款（ADR-010 落地时扩展；两条独立规则不可合并——合并会让模块间互访 internal）。 */
+    public static final ArchRule INTERNAL_只被本能力模块访问_数据 = capabilityInternal只被本模块访问("capability.data");
+
+    private static ArchRule capabilityInternal只被本模块访问(String modulePath) {
+        return classes()
+                .that().resideInAPackage("cn.youhuale.leitu." + modulePath + "..internal..")
+                .should().onlyHaveDependentClassesThat()
+                .resideInAPackage("cn.youhuale.leitu." + modulePath + "..")
+                .because("能力模块（" + modulePath + "）的 internal 同样只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model");
+    }
 
     /** 各金样本相互独立：examples 是平行的示范，彼此不依赖（同一样本内部的依赖不受限）。 */
     public static final ArchRule EXAMPLES_相互独立 =
