@@ -79,15 +79,16 @@ Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://git
 ## 导航
 
 - [AGENTS.md](AGENTS.md)——AI 协作入口（最小学习集 / 硬约束 / 贡献答案流程）
-- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~012）
+- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~013）
 - [术语表](docs/GLOSSARY.md)——术语与限用词表
 
 ## 状态与路线
 
 - **0.1.0（已发布）**：管道横切层——四条答案（who-is-operating / allow-or-not / what-happened + access 能力），每个操作在场的身份 / 放行 / 记录 / 访问判定；
 - **0.2.0 开发中**：第五～八条答案已入库——config-source（配置源）、data-access（数据存取器）、failure-response（失败交代）与 cache（缓存：TTL+LRU / getOrLoad 装载收编 / 租户作用域键）——**五条无条件必答全部 answered**，151 个测试全绿；
-- **未覆盖**：锁 / 存储 / API 文档（api-contract），见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
-- 下一程：锁 / 存储 → API 文档 → 真实项目接入验证；
+- **API 文档已定策（drafted）**：不自研，集成 springdoc + knife4j（OpenAPI 标准）——实现随 starter 层开启落地（ADR-013）；
+- **未覆盖**：锁 / 存储，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
+- 下一程：starter 层规划（API 文档接线）→ 真实项目接入验证；
 - 发布节奏：版本一律走 tag（已发 `v0.1.0`）；不承诺 main 分支稳定。
 
 ## 坐标与许可

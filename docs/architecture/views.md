@@ -42,7 +42,7 @@ flowchart TB
 | secrets-split | pipeline | conditional | ⬜ open | 秘密管理是否独立成问（与普通配置分离）？ |
 | feature-flags | pipeline | conditional | ⬜ open | 特性开关怎么管理？ |
 | input-validation | pipeline | conditional | ⬜ open | 进来的数据可信吗（入参验证的位置与标准做法）？ |
-| api-contract | pipeline | conditional | ⬜ open | 服务对外暴露了什么（契约表达）？ |
+| api-contract | pipeline | conditional | 📝 drafted | 服务对外暴露了什么（对外 API 表达）？ |
 
 ## Relation——答案依赖图
 

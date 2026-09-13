@@ -12,6 +12,7 @@
 - [问题页：业务数据怎么读写（数据存取）](problems/data-access.md)
 - [问题页：操作失败了怎么交代（失败交代）](problems/failure-response.md)
 - [问题页：怎么缓存（缓存）](problems/cache.md)
+- [问题页：服务对外暴露了什么（对外 API 表达，drafted）](problems/api-contract.md)
 - [决策记录 ADR](decisions/README.md) —— 每条设计为什么是现在这样
 
 主仓库：[helloworldtang/leitu](https://github.com/helloworldtang/leitu)
