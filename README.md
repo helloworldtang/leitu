@@ -49,6 +49,7 @@ Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://git
 | 这次访问（或出站调用）允许吗？ | 判定链：可插拔 Guards 任一可否决，deny-by-default | [allow-or-not](docs/problems/allow-or-not.md) |
 | 谁在操作？代表谁？链路标识？ | 执行上下文：一次绑定处处只读，匿名兜底 | [who-is-operating](docs/problems/who-is-operating.md) |
 | 发生了什么，怎么记录？ | 观测事件：一次记录、扇出落点，日志级默认兜底 | [what-happened](docs/problems/what-happened.md) |
+| 配置值从哪来？ | 配置源：三源兜底（系统属性 → 环境变量 → leitu.properties）+ SPI 插拔，读时求值 | [config-source](docs/problems/config-source.md) |
 | 访问判定的成套答案 | PermissionPolicy 扩展缝 + 声明式 RBAC-lite + 预算 Guard | capability `access`（[leitu-capability-access](catalog/problems.json)） |
 
 更多问题与状态见[问题目录](catalog/problems.json)（`open` = 已立目待答）。
@@ -75,15 +76,16 @@ Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://git
 ## 导航
 
 - [AGENTS.md](AGENTS.md)——AI 协作入口（最小学习集 / 硬约束 / 贡献答案流程）
-- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~008）
+- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~009）
 - [术语表](docs/GLOSSARY.md)——术语与限用词表
 
 ## 状态与路线
 
-- **0.1.0——管道横切层可用**：四条答案已交付（who-is-operating / allow-or-not / what-happened + access 能力），即每个操作在场的身份 / 放行 / 记录 / 访问判定；59 个测试全绿；
-- **未覆盖**：业务开发的主体链路——配置来源（config-source）/ 数据访问（data-access）/ 失败交代（failure-response）/ 缓存 / 锁 / 存储 / API 文档（api-contract），全部 `open`，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
-- 下一程：沿 CRUD 链补齐（配置来源 → 数据访问 → 失败交代 → 缓存 → API 文档）→ 真实项目接入验证；
-- 发布节奏：版本一律走 tag（当前 `v0.1.0`）；不承诺 main 分支稳定。
+- **0.1.0（已发布）**：管道横切层——四条答案（who-is-operating / allow-or-not / what-happened + access 能力），每个操作在场的身份 / 放行 / 记录 / 访问判定；59 个测试全绿；
+- **0.2.0 开发中**：第五条答案 config-source 已入库（配置源：三源兜底 + SPI 插拔 + 值静默教义），84 个测试全绿；
+- **未覆盖**：数据访问（data-access）/ 失败交代（failure-response）/ 缓存 / 锁 / 存储 / API 文档（api-contract），全部 `open`，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
+- 下一程：数据访问 → 失败交代 → 缓存 → API 文档 → 真实项目接入验证；
+- 发布节奏：版本一律走 tag（已发 `v0.1.0`）；不承诺 main 分支稳定。
 
 ## 坐标与许可
 

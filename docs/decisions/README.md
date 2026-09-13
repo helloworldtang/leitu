@@ -12,6 +12,7 @@
 | [ADR-006](ADR-006-answer-admission.md) | 答案入库制度（五件套 + catalog schema） | 已接受 |
 | [ADR-007](ADR-007-naming-leitu.md) | 命名与坐标：累土 leitu / cn.youhuale | 已接受 |
 | [ADR-008](ADR-008-observation-event.md) | 问题"发生了什么"的答案：观测事件协议 + 日志级默认 | 已接受 |
+| [ADR-009](ADR-009-config-source.md) | 问题"配置值从哪来"的答案：三源兜底 + SPI 插拔配置源 | 已接受 |
 
 ## 制度
 

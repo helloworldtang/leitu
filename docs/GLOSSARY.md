@@ -50,6 +50,15 @@
 | **观测落点（ObservationSink）** | SPI：事件的落点，adapter/宿主实现（日志管线 / OTel / Micrometer / 审计库）。三支柱是同一事件流在落点侧的投影；约定不抛异常——观测不打断主流程。 |
 | **AiUsage** | AI 调用的用量事实：model + input/output token 数。费用不走类型（计费口径变化原因在 provider 侧），走 attributes（如 `"ai.cost"`）。 |
 
+## 配置
+
+| 术语 | 定义 |
+|---|---|
+| **配置源（ConfigSource）** | SPI——配置值的一个来源。`name()`（诊断身份，永不携带值）+ `get(key)`（缺失=Optional.empty 是合法态）。配置中心（Nacos/Apollo）由 adapter 实现本接口插入。源不声明优先级——优先级=组合顺序。见 ADR-009。 |
+| **配置读取器（ConfigReader）** | Port——沿源链现查（first-match-wins，读时求值无订阅）。`get(key)` / `get(key, fallback)` + 类型化助手（int/long/boolean/Duration/enum 带默认值）；缺失→默认值，有值但解析失败→错误即教程。`standard()`=三源兜底（系统属性→环境变量→classpath leitu.properties）。 |
+| **优先级=组合顺序** | 配置源不各自声明优先级（无序号/注解）；`ConfigReader.of(源…)` 参数顺序即优先级，装配处一处可见（toString 印出全链）。 |
+| **值不上诊断面** | 配置的安全教义：toString 与一切异常只含 key 与源名，永不携带配置值——无豁免，为秘密源（secrets-split，待答）留缝，被单测锁死。 |
+
 ## 制度
 
 | 术语 | 定义 |

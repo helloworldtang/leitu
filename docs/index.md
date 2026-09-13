@@ -8,6 +8,7 @@
 - [问题目录](../catalog/problems.json) —— 本库回答哪些问题、各自什么状态
 - [问题页范例：允许吗（判定链）](problems/allow-or-not.md)
 - [问题页：发生了什么（观测）](problems/what-happened.md)
+- [问题页：配置值从哪来（配置源）](problems/config-source.md)
 - [决策记录 ADR](decisions/README.md) —— 每条设计为什么是现在这样
 
 主仓库：[helloworldtang/leitu](https://github.com/helloworldtang/leitu)

@@ -1,6 +1,6 @@
 {
   "project": "leitu",
-  "version": "0.1.0-docs",
+  "version": "0.2.0-docs",
   "note": "问题目录：本库回答哪些问题。字段制度见 docs/decisions/ADR-006。status: open=问题立目未答；drafted=答案已成文未实现；answered=五件套齐且有实现；deprecated/removed=退役（replaced_by 指向替代答案）。",
   "entries": [
     {
@@ -8,13 +8,18 @@
       "problem": "配置值从哪来？",
       "facet": "pipeline",
       "required": "always",
-      "status": "open",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.2.0",
       "replaced_by": null,
       "depends_on": [],
       "sub_questions": ["秘密（凭据）是否独立于普通配置——轮换、脱敏、绝不落日志，变化原因不同"],
-      "links": { "doc": null, "code": null, "rule": null, "example": null }
+      "links": {
+        "doc": "docs/problems/config-source.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.config",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/config-source"
+      }
     },
     {
       "id": "who-is-operating",

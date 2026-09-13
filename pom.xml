@@ -20,6 +20,7 @@
     <module>examples/who-is-operating</module>
     <module>examples/access</module>
     <module>examples/what-happened</module>
+    <module>examples/config-source</module>
   </modules>
 
   <properties>

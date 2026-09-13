@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>cn.youhuale</groupId>
+    <artifactId>leitu-parent</artifactId>
+    <version>0.2.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>leitu-example-config-source</artifactId>
+  <name>examples :: config-source</name>
+  <description>金样本：配置源的最小可运行示范——三源兜底优先级/类型化读取/错误即教程/SPI 插拔。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>
