@@ -11,6 +11,7 @@
 | [ADR-005](ADR-005-guard-chain.md) | 问题"允许吗"重构为判定链 | 已接受 |
 | [ADR-006](ADR-006-answer-admission.md) | 答案入库制度（五件套 + catalog schema） | 已接受 |
 | [ADR-007](ADR-007-naming-leitu.md) | 命名与坐标：累土 leitu / cn.youhuale | 已接受 |
+| [ADR-008](ADR-008-observation-event.md) | 问题"发生了什么"的答案：观测事件协议 + 日志级默认 | 已接受 |
 
 ## 制度
 

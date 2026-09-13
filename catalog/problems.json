@@ -57,13 +57,18 @@
       "problem": "发生了什么，怎么记录？",
       "facet": "pipeline",
       "required": "always",
-      "status": "open",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.1.0",
       "replaced_by": null,
-      "depends_on": [],
+      "depends_on": ["who-is-operating"],
       "sub_questions": ["logs / metrics / traces 三支柱", "这次操作的成本——AI 调用的 token 与费用观测"],
-      "links": { "doc": null, "code": null, "rule": null, "example": null }
+      "links": {
+        "doc": "docs/problems/what-happened.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.observe",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/what-happened"
+      }
     },
     {
       "id": "failure-response",

@@ -19,6 +19,7 @@
     <module>examples/allow-or-not</module>
     <module>examples/who-is-operating</module>
     <module>examples/access</module>
+    <module>examples/what-happened</module>
   </modules>
 
   <properties>

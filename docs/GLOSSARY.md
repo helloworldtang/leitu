@@ -40,6 +40,16 @@
 | **Decision** | 判定结果对象：`verdict（allow/deny）+ reason（为什么）+ retry（重试语义）`。否决必须带"为什么 + 怎么办"（错误即教程）。 |
 | **OperationDispatcher** | core 内的跨模块协作调度机制：in-process、上下文传播 / 鉴权 / 观测在环。模块间不许直插对方 internal。 |
 
+## 观测
+
+| 术语 | 定义 |
+|---|---|
+| **观测（observation）** | "发生了什么、怎么记录"的答案域词。包名 `observe`（高频经济学），类型名 `Observation*`（对齐 Micrometer Observation API 与 OTel 语义约定）。见 ADR-008。 |
+| **观测事件（ObservationEvent）** | 统一事件协议：name（点分命名，构造即校验）+ context（谁 + traceId，锚点复用 who-is-operating）+ occurredAt + outcome（成功/失败必带原因）+ duration + aiUsage + attributes（逃生门，不可变拷贝）。 |
+| **观测记录器（ObservationRecorder）** | Port：`record(event)` 一次记录、扇出到全部落点；空装配落到日志级默认（观测维度=最小可用实现，非 Noop）。 |
+| **观测落点（ObservationSink）** | SPI：事件的落点，adapter/宿主实现（日志管线 / OTel / Micrometer / 审计库）。三支柱是同一事件流在落点侧的投影；约定不抛异常——观测不打断主流程。 |
+| **AiUsage** | AI 调用的用量事实：model + input/output token 数。费用不走类型（计费口径变化原因在 provider 侧），走 attributes（如 `"ai.cost"`）。 |
+
 ## 制度
 
 | 术语 | 定义 |

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>cn.youhuale</groupId>
+    <artifactId>leitu-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>leitu-example-what-happened</artifactId>
+  <name>examples :: what-happened</name>
+  <description>金样本：观测的最小可运行示范——事件锚点不缺席/日志级默认兜底/AI 用量记账/与判定链配合。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

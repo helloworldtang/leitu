@@ -17,7 +17,7 @@ flowchart TB
   CO -. 答案五件套锚定 .-> CAT
 ```
 
-覆盖度：**3 / 20** 已答（管道题 14 条，能力题 6 条）。
+覆盖度：**4 / 20** 已答（管道题 14 条，能力题 6 条）。
 
 ## Role——各区职责与状态
 
@@ -26,7 +26,7 @@ flowchart TB
 | config-source | pipeline | always | ⬜ open | 配置值从哪来？ |
 | who-is-operating | pipeline | always | ✅ answered | 谁在操作？代表谁（租户）？这次调用的链路标识是什么？ |
 | allow-or-not | pipeline | always | ✅ answered | 这次访问（或出站调用）允许吗？ |
-| what-happened | pipeline | always | ⬜ open | 发生了什么，怎么记录？ |
+| what-happened | pipeline | always | ✅ answered | 发生了什么，怎么记录？ |
 | failure-response | pipeline | always | ⬜ open | 操作失败了，怎么向调用方交代？ |
 | who-cares | pipeline | conditional | ⬜ open | 谁关心这个事件？ |
 | duplicate-request | pipeline | conditional | ⬜ open | 同一请求来两次怎么办（幂等）？ |
@@ -51,6 +51,7 @@ flowchart TB
 ```mermaid
 graph LR
   allow-or-not --> who-is-operating
+  what-happened --> who-is-operating
   failure-response --> what-happened
   data-changed-by-whom --> who-is-operating
   data-changed-by-whom --> what-happened
@@ -69,6 +70,7 @@ graph LR
   feature-flags --> config-source
   class who-is-operating answered
   class allow-or-not answered
+  class what-happened answered
   class access answered
   classDef answered fill:#d4edda,stroke:#2e7d32
 ```

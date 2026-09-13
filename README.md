@@ -38,6 +38,8 @@
 |---|---|---|
 | 这次访问（或出站调用）允许吗？ | 判定链：可插拔 Guards 任一可否决，deny-by-default | [allow-or-not](docs/problems/allow-or-not.md) |
 | 谁在操作？代表谁？链路标识？ | 执行上下文：一次绑定处处只读，匿名兜底 | [who-is-operating](docs/problems/who-is-operating.md) |
+| 发生了什么，怎么记录？ | 观测事件：一次记录、扇出落点，日志级默认兜底 | [what-happened](docs/problems/what-happened.md) |
+| 访问判定的成套答案 | PermissionPolicy 扩展缝 + 声明式 RBAC-lite + 预算 Guard | capability `access`（[leitu-capability-access](catalog/problems.json)） |
 
 更多问题与状态见[问题目录](catalog/problems.json)（`open` = 已立目待答）。
 
@@ -63,13 +65,13 @@
 ## 导航
 
 - [AGENTS.md](AGENTS.md)——AI 协作入口（最小学习集 / 硬约束 / 贡献答案流程）
-- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~007）
+- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~008）
 - [术语表](docs/GLOSSARY.md)——术语与限用词表
 
 ## 状态与路线
 
-- 已交付 2 条答案（allow-or-not / who-is-operating），23 个测试全绿；
-- 下一程：access 能力（判定链的成套答案）→ 其余管道问题 → 真实项目接入验证；
+- 已交付 4 条答案（who-is-operating / allow-or-not / what-happened + access 能力），59 个测试全绿；
+- 下一程：其余管道问题（失败交代 / 配置来源 / 审计）→ 数据能力 → 真实项目接入验证；
 - 发布门槛：达到生产可用再发 0.1.0。
 
 ## 坐标与许可
