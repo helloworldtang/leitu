@@ -1,0 +1,35 @@
+name: release
+# 发布到 Maven Central（Central Portal）。前置条件（GitHub Secrets）：
+#   CENTRAL_USERNAME / CENTRAL_PASSWORD —— central.sonatype.com 的 User Token
+#   GPG_PRIVATE_KEY / GPG_PASSPHRASE     —— 签名密钥
+# 未配置 Secrets 时此工作流会失败——属预期（凭据就绪前不发布）。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      # 构建走项目级 .mvn/settings.xml（阿里云镜像），Central 凭据需注入同一份 settings（-s 会覆盖 ~/.m2）
+      - name: 注入 Central 凭据
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: |
+          sed -i "s#</mirrors>#</mirrors>\n  <servers>\n    <server>\n      <id>central</id>\n      <username>\${CENTRAL_USERNAME}</username>\n      <password>\${CENTRAL_PASSWORD}</password>\n    </server>\n  </servers>#" .mvn/settings.xml
+          grep -A4 '<id>central</id>' .mvn/settings.xml
+      # 发布集合：leitu-parent(pom) + 三库模块；examples 不发布
+      - name: Publish to Maven Central
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: ./mvnw -B -P release -pl .,leitu-core,leitu-rules,leitu-capability-access deploy

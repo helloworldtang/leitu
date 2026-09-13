@@ -22,7 +22,7 @@
 | **收敛保证** | 今天和明天生成的代码长得一样（默认实现兜底 + 统一 spec） |
 | **机验闭环** | 对不对跑一下就知道（边界规则 + 金样本，`./mvnw verify`） |
 
-## 快速开始（当前为设计与首答案阶段）
+## 快速开始（当前为 0.1.0 MVP）
 
 三步读懂本项目：
 
@@ -30,7 +30,17 @@
 2. 读 [问题目录](catalog/problems.json)——本库回答哪些问题、各自什么状态；
 3. 读一条完整答案：[允许吗（判定链）](docs/problems/allow-or-not.md)——四段式范例，配可运行金样本 `examples/allow-or-not`。
 
-引入依赖（0.1.0 发布后）：`cn.youhuale:leitu-core`
+引入依赖（Maven Central 同步后）：
+
+```xml
+<dependency>
+  <groupId>cn.youhuale</groupId>
+  <artifactId>leitu-core</artifactId>
+  <version>0.1.0</version>
+</dependency>
+```
+
+Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://github.com/helloworldtang/leitu/archive/refs/tags/v0.1.0.tar.gz)）。**不要引用滚动的 main 分支或 tarball**——升级必须是显式改版本号的决策动作。
 
 ## 已交付的答案
 
@@ -70,9 +80,10 @@
 
 ## 状态与路线
 
-- 已交付 4 条答案（who-is-operating / allow-or-not / what-happened + access 能力），59 个测试全绿；
-- 下一程：其余管道问题（失败交代 / 配置来源 / 审计）→ 数据能力 → 真实项目接入验证；
-- 发布门槛：达到生产可用再发 0.1.0。
+- **0.1.0（MVP）**：四条答案已交付（who-is-operating / allow-or-not / what-happened + access 能力），可交付企业团队使用，基本满足常用 CRUD 业务开发；59 个测试全绿；
+- 不常用场景暂未支持，见[问题目录](catalog/problems.json) `open` 条目（失败交代 / 配置来源 / 审计 / 缓存 / 锁 / 存储等）；
+- 下一程：open 条目按真实痛点推进 → 真实项目接入验证；
+- 发布节奏：版本一律走 tag（当前 `v0.1.0`）；不承诺 main 分支稳定。
 
 ## 坐标与许可
 
