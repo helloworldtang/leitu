@@ -79,6 +79,17 @@
 | **业务错 / 系统错（Kind）** | 失败的两分：调用方改行为可解决的错（参数/权限/状态/判定否决——BUSINESS，全量交代）；其余是我们的错（含下游与三方故障——SYSTEM，脱敏交代）。分类决定交代尺度。 |
 | **脱敏默认（redacted by default）** | SYSTEM 类失败的安全教义：异常消息与类名不出端——调用方只见通用交代 + traceId，全量细节走观测通道。fromThrowable 不泄漏被单测锁死；system(...) 工厂不收 detail 参数——脱敏在工厂面成立。 |
 
+## 缓存
+
+| 术语 | 定义 |
+|---|---|
+| **缓存（Cache）** | "怎么缓存"的标准答案面：get / put（显式 TTL）/ evict / getOrLoad 四操作；键在实现内部按租户复合（业务传裸键，"-" 非通配——租户作用域教义在缓存的落位）。不取操作集式命名（能力面物名优先）。见 ADR-012。 |
+| **TTL 必须显式（不藏默认）** | put / getOrLoad 携带正 Duration；项目级默认走 CachePolicy.ttl()——配置来的显式默认，实现内不藏。 |
+| **装载三段式（getOrLoad）** | get→未命中→装载→put 收编为一个方法；进程内承诺同键并发只装载一次（粗粒度互斥）；分布式实现不承诺——跨进程互斥是 lock 能力的事（catalog 条目 lock）。 |
+| **LRU 上限（maxSize）** | 容量上限进 v1——无上限缓存是内存 footgun；访问序 LinkedHashMap + removeEldestEntry；上限是实例级（跨租户合计）。 |
+| **缓存策略（CachePolicy）** | record(maxSize, ttl, enabled) + fromConfig(ConfigReader)（cache.max-size / cache.ttl / cache.enabled，缺省 1000 / PT30M / true）；enabled=false 的装配答案是 Caches.noop()。 |
+| **观察缓存器（ObservingCache）** | opt-in 装饰器记 cache.hit / cache.miss / cache.put / cache.evict.hit / cache.evict.miss（attributes 带 cache.key）；**覆写 getOrLoad**——原子装载留在 delegate 锁内，装饰不击穿只装一次；异常路径不记。Noop 缓存为无害维度默认值的兑现（见「分维度默认值」）。 |
+
 ## 制度
 
 | 术语 | 定义 |

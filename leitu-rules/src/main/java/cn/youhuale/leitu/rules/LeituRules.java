@@ -42,6 +42,9 @@ public final class LeituRules {
     /** data 能力同款（ADR-010 落地时扩展；两条独立规则不可合并——合并会让模块间互访 internal）。 */
     public static final ArchRule INTERNAL_只被本能力模块访问_数据 = capabilityInternal只被本模块访问("capability.data");
 
+    /** cache 能力同款（ADR-012 落地时扩展；规则独立同理）。 */
+    public static final ArchRule INTERNAL_只被本能力模块访问_缓存 = capabilityInternal只被本模块访问("capability.cache");
+
     private static ArchRule capabilityInternal只被本模块访问(String modulePath) {
         return classes()
                 .that().resideInAPackage("cn.youhuale.leitu." + modulePath + "..internal..")

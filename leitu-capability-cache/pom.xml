@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>cn.youhuale</groupId>
+    <artifactId>leitu-parent</artifactId>
+    <version>0.2.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>leitu-capability-cache</artifactId>
+  <name>leitu-capability-cache</name>
+  <description>“怎么缓存”的成套答案：Cache 缓存缝 + TTL 过期 + LRU 上限 + getOrLoad 装载收编 + 租户作用域键 + 内存默认实现（大声标注）+ 观察装饰器 + Noop。纯 Java。</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

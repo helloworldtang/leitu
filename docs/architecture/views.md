@@ -17,7 +17,7 @@ flowchart TB
   CO -. 答案五件套锚定 .-> CAT
 ```
 
-覆盖度：**7 / 20** 已答（管道题 14 条，能力题 6 条）。
+覆盖度：**8 / 20** 已答（管道题 14 条，能力题 6 条）。
 
 ## Role——各区职责与状态
 
@@ -36,7 +36,7 @@ flowchart TB
 | data-access | capability | conditional | ✅ answered | 业务数据怎么读写（审计字段、租户隔离、数据权限）？ |
 | identity | capability | conditional | ⬜ open | 操作者身份怎么解析与建模（身份源、操作者模型）？ |
 | access | capability | conditional | ✅ answered | 访问判定的成套答案（判定链用法 + 权限类 Guards） |
-| cache | capability | conditional | ⬜ open | 怎么缓存（可观测、可替换：进程内 / Redis）？ |
+| cache | capability | conditional | ✅ answered | 怎么缓存（可观测、可替换：进程内 / Redis）？ |
 | lock | capability | conditional | ⬜ open | 并发互斥怎么锁（进程内 / Redis / ZooKeeper）？ |
 | storage | capability | conditional | ⬜ open | 对象存储怎么用（本地 / S3 / MinIO）？ |
 | secrets-split | pipeline | conditional | ⬜ open | 秘密管理是否独立成问（与普通配置分离）？ |
@@ -77,6 +77,7 @@ graph LR
   class failure-response answered
   class data-access answered
   class access answered
+  class cache answered
   classDef answered fill:#d4edda,stroke:#2e7d32
 ```
 

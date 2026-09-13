@@ -52,6 +52,7 @@ Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://git
 | 配置值从哪来？ | 配置源：三源兜底（系统属性 → 环境变量 → leitu.properties）+ SPI 插拔，读时求值 | [config-source](docs/problems/config-source.md) |
 | 业务数据怎么读写（审计字段、租户隔离、数据权限）？ | 数据存取器：审计四件套自动盖章＋租户作用域读写＋数据权限走判定链；内存兜底大声标注 | [data-access](docs/problems/data-access.md) |
 | 操作失败了，怎么向调用方交代？ | 失败交代：业务错全量、系统错脱敏＋traceId，判定链否决原样随行 | [failure-response](docs/problems/failure-response.md) |
+| 怎么缓存（可观测、可替换：进程内 / Redis）？ | 缓存：显式 TTL + LRU 上限的进程内实现，getOrLoad 装载收编（同键只装一次），租户作用域键，观察 opt-in | [cache](docs/problems/cache.md) |
 | 访问判定的成套答案 | PermissionPolicy 扩展缝 + 声明式 RBAC-lite + 预算 Guard | capability `access`（[leitu-capability-access](catalog/problems.json)） |
 
 更多问题与状态见[问题目录](catalog/problems.json)（`open` = 已立目待答）。
@@ -78,15 +79,15 @@ Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://git
 ## 导航
 
 - [AGENTS.md](AGENTS.md)——AI 协作入口（最小学习集 / 硬约束 / 贡献答案流程）
-- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~011）
+- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~012）
 - [术语表](docs/GLOSSARY.md)——术语与限用词表
 
 ## 状态与路线
 
 - **0.1.0（已发布）**：管道横切层——四条答案（who-is-operating / allow-or-not / what-happened + access 能力），每个操作在场的身份 / 放行 / 记录 / 访问判定；
-- **0.2.0 开发中**：第五～七条答案已入库——config-source（配置源）、data-access（数据存取器：审计四件套自动盖章 + 租户作用域 + 数据权限走判定链）与 failure-response（失败交代：业务错全量、系统错脱敏）——**五条无条件必答全部 answered**，124 个测试全绿；
-- **未覆盖**：缓存 / 锁 / 存储 / API 文档（api-contract），见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
-- 下一程：缓存 → API 文档 → 真实项目接入验证；
+- **0.2.0 开发中**：第五～八条答案已入库——config-source（配置源）、data-access（数据存取器）、failure-response（失败交代）与 cache（缓存：TTL+LRU / getOrLoad 装载收编 / 租户作用域键）——**五条无条件必答全部 answered**，151 个测试全绿；
+- **未覆盖**：锁 / 存储 / API 文档（api-contract），见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
+- 下一程：锁 / 存储 → API 文档 → 真实项目接入验证；
 - 发布节奏：版本一律走 tag（已发 `v0.1.0`）；不承诺 main 分支稳定。
 
 ## 坐标与许可

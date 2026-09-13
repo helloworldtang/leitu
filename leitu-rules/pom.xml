@@ -50,6 +50,11 @@
     </dependency>
     <dependency>
       <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-capability-cache</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
       <artifactId>leitu-example-access</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
@@ -75,6 +80,12 @@
     <dependency>
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-example-failure-response</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-example-cache</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>

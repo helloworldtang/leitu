@@ -25,5 +25,8 @@ class RepoBoundaryRulesTest {
     static final ArchRule internal只被本能力模块访问数据 = LeituRules.INTERNAL_只被本能力模块访问_数据;
 
     @ArchTest
+    static final ArchRule internal只被本能力模块访问缓存 = LeituRules.INTERNAL_只被本能力模块访问_缓存;
+
+    @ArchTest
     static final ArchRule examples相互独立 = LeituRules.EXAMPLES_相互独立;
 }
