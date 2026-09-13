@@ -23,6 +23,7 @@
     <module>examples/what-happened</module>
     <module>examples/config-source</module>
     <module>examples/data-access</module>
+    <module>examples/failure-response</module>
   </modules>
 
   <properties>

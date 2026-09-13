@@ -14,6 +14,7 @@
 | [ADR-008](ADR-008-observation-event.md) | 问题"发生了什么"的答案：观测事件协议 + 日志级默认 | 已接受 |
 | [ADR-009](ADR-009-config-source.md) | 问题"配置值从哪来"的答案：三源兜底 + SPI 插拔配置源 | 已接受 |
 | [ADR-010](ADR-010-data-access.md) | 问题"业务数据怎么读写"的答案：审计四件套 + 租户作用域 + 数据存取器 | 已接受 |
+| [ADR-011](ADR-011-failure-notice.md) | 问题"操作失败了"的答案：FailureNotice 交代结构 + 脱敏默认 | 已接受 |
 
 ## 制度
 

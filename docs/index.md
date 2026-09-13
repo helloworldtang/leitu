@@ -10,6 +10,7 @@
 - [问题页：发生了什么（观测）](problems/what-happened.md)
 - [问题页：配置值从哪来（配置源）](problems/config-source.md)
 - [问题页：业务数据怎么读写（数据存取）](problems/data-access.md)
+- [问题页：操作失败了怎么交代（失败交代）](problems/failure-response.md)
 - [决策记录 ADR](decisions/README.md) —— 每条设计为什么是现在这样
 
 主仓库：[helloworldtang/leitu](https://github.com/helloworldtang/leitu)

@@ -80,13 +80,18 @@
       "problem": "操作失败了，怎么向调用方交代？",
       "facet": "pipeline",
       "required": "always",
-      "status": "open",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.2.0",
       "replaced_by": null,
-      "depends_on": ["what-happened"],
+      "depends_on": ["who-is-operating", "allow-or-not", "what-happened"],
       "sub_questions": ["业务错与系统错的分类", "错误结构", "否决类错误的重试语义（与判定链 Decision 对齐）"],
-      "links": { "doc": null, "code": null, "rule": null, "example": null }
+      "links": {
+        "doc": "docs/problems/failure-response.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.failure",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/failure-response"
+      }
     },
 
     {

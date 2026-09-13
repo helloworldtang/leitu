@@ -70,6 +70,15 @@
 | **数据权限走判定链** | 单资源判定=AccessRequest.resource 携数据主键的 Guard（判定链已有协议）；列表行过滤（查询条件注入）是查询优化，属 adapter——不造规则翻译器。 |
 | **观察存取器（ObservingDataStore）** | opt-in 装饰器：给任一存取器记 data.* 观测事件（data.saved / data.read.hit / data.read.miss / data.deleted.hit / data.deleted.miss / data.listed），装配处组合，默认不记；异常路径不记事件（failure-response 的地盘）。 |
 
+## 失败交代
+
+| 术语 | 定义 |
+|---|---|
+| **失败交代（failure）** | "操作失败了，怎么向调用方交代"的答案域词。包名 `failure`，类型名 `FailureNotice`。见 ADR-011。 |
+| **FailureNotice** | 传输无关的交代结构：kind + type（点分机读标识，构造即校验）+ title + detail + retry（复用判定链 Retry）+ traceId + attributes（扩展成员，不可变拷贝）。HTTP problem+json（RFC 9457）是 adapter 侧投影，不是本体。 |
+| **业务错 / 系统错（Kind）** | 失败的两分：调用方改行为可解决的错（参数/权限/状态/判定否决——BUSINESS，全量交代）；其余是我们的错（含下游与三方故障——SYSTEM，脱敏交代）。分类决定交代尺度。 |
+| **脱敏默认（redacted by default）** | SYSTEM 类失败的安全教义：异常消息与类名不出端——调用方只见通用交代 + traceId，全量细节走观测通道。fromThrowable 不泄漏被单测锁死；system(...) 工厂不收 detail 参数——脱敏在工厂面成立。 |
+
 ## 制度
 
 | 术语 | 定义 |
