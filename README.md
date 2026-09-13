@@ -22,7 +22,7 @@
 | **收敛保证** | 今天和明天生成的代码长得一样（默认实现兜底 + 统一 spec） |
 | **机验闭环** | 对不对跑一下就知道（边界规则 + 金样本，`./mvnw verify`） |
 
-## 快速开始（当前为 0.1.0 MVP）
+## 快速开始
 
 三步读懂本项目：
 
@@ -80,9 +80,9 @@ Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://git
 
 ## 状态与路线
 
-- **0.1.0（MVP）**：四条答案已交付（who-is-operating / allow-or-not / what-happened + access 能力），可交付企业团队使用，基本满足常用 CRUD 业务开发；59 个测试全绿；
-- 不常用场景暂未支持，见[问题目录](catalog/problems.json) `open` 条目（失败交代 / 配置来源 / 审计 / 缓存 / 锁 / 存储等）；
-- 下一程：open 条目按真实痛点推进 → 真实项目接入验证；
+- **0.1.0——管道横切层可用**：四条答案已交付（who-is-operating / allow-or-not / what-happened + access 能力），即每个操作在场的身份 / 放行 / 记录 / 访问判定；59 个测试全绿；
+- **未覆盖**：业务开发的主体链路——配置来源（config-source）/ 数据访问（data-access）/ 失败交代（failure-response）/ 缓存 / 锁 / 存储 / API 文档（api-contract），全部 `open`，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
+- 下一程：沿 CRUD 链补齐（配置来源 → 数据访问 → 失败交代 → 缓存 → API 文档）→ 真实项目接入验证；
 - 发布节奏：版本一律走 tag（当前 `v0.1.0`）；不承诺 main 分支稳定。
 
 ## 坐标与许可
