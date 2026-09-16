@@ -79,6 +79,7 @@ Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://git
 ## 导航
 
 - [AGENTS.md](AGENTS.md)——AI 协作入口（最小学习集 / 硬约束 / 贡献答案流程）
+- [路线图](docs/ROADMAP.md)——阶段、进度与下一步（人类视角；机器视角见问题目录）
 - [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~013）
 - [术语表](docs/GLOSSARY.md)——术语与限用词表
 
