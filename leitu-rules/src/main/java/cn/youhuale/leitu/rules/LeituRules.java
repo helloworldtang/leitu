@@ -37,20 +37,32 @@ public final class LeituRules {
             .because("internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与外部只准用 api/spi/model");
 
     /** capability 的 internal 同理：只被本能力模块访问。新能力模块落地时在此扩展同款规则（见下方 data 同款）。 */
-    public static final ArchRule INTERNAL_只被本能力模块访问 = capabilityInternal只被本模块访问("capability.access");
+    public static final ArchRule INTERNAL_只被本能力模块访问 = internal只被本模块访问("capability.access");
 
     /** data 能力同款（ADR-010 落地时扩展；两条独立规则不可合并——合并会让模块间互访 internal）。 */
-    public static final ArchRule INTERNAL_只被本能力模块访问_数据 = capabilityInternal只被本模块访问("capability.data");
+    public static final ArchRule INTERNAL_只被本能力模块访问_数据 = internal只被本模块访问("capability.data");
 
     /** cache 能力同款（ADR-012 落地时扩展；规则独立同理）。 */
-    public static final ArchRule INTERNAL_只被本能力模块访问_缓存 = capabilityInternal只被本模块访问("capability.cache");
+    public static final ArchRule INTERNAL_只被本能力模块访问_缓存 = internal只被本模块访问("capability.cache");
 
-    private static ArchRule capabilityInternal只被本模块访问(String modulePath) {
+    /** adapter-jdbc 的 internal 同款（ADR-014 / ADR-015；独立规则同理不可合并）。 */
+    public static final ArchRule INTERNAL_只被本适配模块访问_JDBC = internal只被本模块访问("adapter.jdbc");
+
+    /** adapter-web 的 internal 同款（ADR-014 / ADR-015）。 */
+    public static final ArchRule INTERNAL_只被本适配模块访问_WEB = internal只被本模块访问("adapter.web");
+
+    /** Spring 依赖只允许出现在 starter 与 adapter：core 与 capability 保持零框架（ADR-002 / ADR-014）。 */
+    public static final ArchRule SPRING_只在starter与adapter = noClasses()
+            .that().resideInAnyPackage("cn.youhuale.leitu.core..", "cn.youhuale.leitu.capability..")
+            .should().dependOnClassesThat().resideInAnyPackage("org.springframework..")
+            .because("Spring 依赖只允许出现在 starter 与 adapter（ADR-014）；core / capability 零框架");
+
+    private static ArchRule internal只被本模块访问(String modulePath) {
         return classes()
                 .that().resideInAPackage("cn.youhuale.leitu." + modulePath + "..internal..")
                 .should().onlyHaveDependentClassesThat()
                 .resideInAPackage("cn.youhuale.leitu." + modulePath + "..")
-                .because("能力模块（" + modulePath + "）的 internal 同样只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model");
+                .because("模块（" + modulePath + "）的 internal 只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model");
     }
 
     /** 各金样本相互独立：examples 是平行的示范，彼此不依赖（同一样本内部的依赖不受限）。 */

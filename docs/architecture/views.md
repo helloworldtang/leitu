@@ -1,6 +1,6 @@
 # 架构状态（4R 四图）
 
-> 自动生成（`java scripts/ExportArchitecture.java`），勿手改。数据源：catalog/problems.json + 边界规则测试。
+> 自动生成（`java scripts/ExportArchitecture.java`），勿手改。数据源：catalog/problems.json + 边界规则测试（CoreBoundaryRulesTest + LeituRules）。
 
 ## Rank——顶层结构（双平面）
 
@@ -17,7 +17,7 @@ flowchart TB
   CO -. 答案五件套锚定 .-> CAT
 ```
 
-覆盖度：**8 / 20** 已答（管道题 14 条，能力题 6 条）。
+覆盖度：**9 / 20** 已答（管道题 14 条，能力题 6 条）。
 
 ## Role——各区职责与状态
 
@@ -42,7 +42,7 @@ flowchart TB
 | secrets-split | pipeline | conditional | ⬜ open | 秘密管理是否独立成问（与普通配置分离）？ |
 | feature-flags | pipeline | conditional | ⬜ open | 特性开关怎么管理？ |
 | input-validation | pipeline | conditional | ⬜ open | 进来的数据可信吗（入参验证的位置与标准做法）？ |
-| api-contract | pipeline | conditional | 📝 drafted | 服务对外暴露了什么（对外 API 表达）？ |
+| api-contract | pipeline | conditional | ✅ answered | 服务对外暴露了什么（对外 API 表达）？ |
 
 ## Relation——答案依赖图
 
@@ -85,7 +85,16 @@ graph LR
 
 | 规则 | 守什么 |
 |---|---|
-| `core_` | core 是端口面+调度机制，零框架依赖（ADR-002/ADR-003）；中间件只准出现在 adapter 层 |
-| `internal_` | internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与未来模块只准用 api/spi/model |
+| `core_零框架依赖_只依赖JDK与自身` | core 是端口面+调度机制，零框架依赖（ADR-002/ADR-003）；中间件只准出现在 adapter 层 |
+| `internal_只被core内部访问` | internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与未来模块只准用 api/spi/model |
+| `CORE_零框架依赖` | core 是端口面+调度机制，零框架依赖（ADR-002/ADR-003）；中间件只准出现在 adapter 层 |
+| `INTERNAL_只被core访问` | internal 只经 api 的工厂方法触达（GLOSSARY）；examples 与外部只准用 api/spi/model |
+| `INTERNAL_只被本能力模块访问` | 模块（capability.access）的 internal 只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model |
+| `INTERNAL_只被本能力模块访问_数据` | 模块（capability.data）的 internal 只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model |
+| `INTERNAL_只被本能力模块访问_缓存` | 模块（capability.cache）的 internal 只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model |
+| `INTERNAL_只被本适配模块访问_JDBC` | 模块（adapter.jdbc）的 internal 只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model |
+| `INTERNAL_只被本适配模块访问_WEB` | 模块（adapter.web）的 internal 只经 api 工厂方法触达（GLOSSARY）；外部只准用 api/spi/model |
+| `SPRING_只在starter与adapter` | Spring 依赖只允许出现在 starter 与 adapter（ADR-014）；core / capability 零框架 |
+| `EXAMPLES_相互独立` | 金样本之间不互相依赖——每个样本独立成篇，像目录里的平行条目 |
 | `./mvnw verify` | 编译 + 测试 + 边界规则一条命令（AGENTS.md 完成判据） |
 | `java scripts/ExportArchitecture.java` | 本视图的再生成（catalog 变更后跑） |

@@ -6,7 +6,7 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * repo 级边界规则：扫描全 reactor（leitu-core + examples + 本模块）。
+ * repo 级边界规则：扫描全 reactor（core / capability / adapter / starter / examples + 本模块）。
  * 与 leitu-core 内的 CoreBoundaryRulesTest（模块内快速反馈）互补——这里是全仓库的最终门。
  */
 @AnalyzeClasses(packages = "cn.youhuale.leitu", importOptions = ImportOption.DoNotIncludeTests.class)
@@ -29,4 +29,13 @@ class RepoBoundaryRulesTest {
 
     @ArchTest
     static final ArchRule examples相互独立 = LeituRules.EXAMPLES_相互独立;
+
+    @ArchTest
+    static final ArchRule spring只在starter与adapter = LeituRules.SPRING_只在starter与adapter;
+
+    @ArchTest
+    static final ArchRule internal只被本适配模块访问JDBC = LeituRules.INTERNAL_只被本适配模块访问_JDBC;
+
+    @ArchTest
+    static final ArchRule internal只被本适配模块访问WEB = LeituRules.INTERNAL_只被本适配模块访问_WEB;
 }

@@ -1,6 +1,6 @@
 # 服务对外暴露了什么（api-contract）
 
-> catalog：pipeline ｜ required: conditional ｜ status: drafted ｜ depends_on: —
+> catalog：pipeline ｜ required: conditional ｜ status: answered（stability: stable，since 0.2.0） ｜ depends_on: —
 
 ## 一、为什么
 
@@ -8,20 +8,20 @@ API 文档是业务开发链的最后一环，也是漂移最显眼的一环：�
 
 没有标准答案时的漂移成本：每个项目自造目录或干脆裸奔——接口变更靠口口相传；AI 生成客户端代码时猜参数猜响应；联调与工单排查全部退化为读源码。
 
-## 二、机制（标准答案的形状——已定策，实现随 starter 层落地）
+## 二、机制（标准答案的形状——已交付：starter 接线 + adapter-web 投影）
 
 **不自研：API 文档走 springdoc + knife4j（OpenAPI 3 事实标准）；声明用注解+扫描，人读面用 knife4j UI。**
 
 ```text
-// 待实现：leitu starter 层接线（adapter/starter 层开启后，另行规划）
-// 1) FailureNotice → problem+json 的 schema 对齐（ADR-011 投影落地）
-// 2) traceId 响应头提示（失败交代关联键进文档示例）
-// 3) 判定链 action 与 operationId 点分同源对齐
-// 4) 文档端点豁免统一包装的框架级约束
+已实现（leitu-spring-boot-starter + leitu-adapter-web，ADR-014 / ADR-015）：
+1) FailureNotice → problem+json 投影（application/problem+json，RFC 9457；判定否决 403 / 系统错脱敏）
+2) traceId 响应头（X-Trace-Id）由投影携带——失败交代的关联键，进文档示例
+3) 判定链 action 与 operationId 点分同源：命名建议 + 金样本示范（examples/spring-boot）
+4) 框架端点豁免谓词 FrameworkEndpoints（/v3/api-docs、/doc.html、/webjars…）供统一包装组件豁免
 ```
 
 - **形状**：OpenAPI 3 标准描述 + springdoc 注解声明 + knife4j UI 呈现——全部消费业界标准，本库零自有约定
-- **兜底**：引 starter 依赖即得开箱文档（待建——本库今天无 Spring 模块，starter 层开启是前置）
+- **兜底**：引 starter 依赖即得开箱文档（已交付：springdoc + knife4j 随 starter 装配，条件激活）
 - **成套答案**：leitu 的增值在接线四点（schema 对齐 / traceId / 动作同源 / 端点豁免），见 ADR-013
 
 ## 三、取舍
@@ -36,6 +36,6 @@ API 文档是业务开发链的最后一环，也是漂移最显眼的一环：�
 
 ## 四、边界
 
-- 本页是决策不是实现：catalog 状态 drafted = 成文未实现（诚实态）；实现 = 第一个 starter 模块，随 adapter/starter 层开启落地
-- starter 层开启是整套架构决策（宿主版本管理 / BOM / 模块布局），另行专门规划——不因本条赶工
-- 关联：ADR-013；对接的既有答案 failure-response（problem+json 投影）、who-is-operating（traceId）、allow-or-not（action 同源）
+- 已落地：catalog 状态 answered；实现 = leitu-spring-boot-starter（springdoc + knife4j 接线）+ leitu-adapter-web（投影四点）；宿主与版本策略见 ADR-014
+- 接线只承诺四条增值点（schema 对齐 / traceId / 动作同源 / 端点豁免）——超出部分不承诺（承诺纪律）
+- 关联：ADR-013 / ADR-014 / ADR-015；对接的既有答案 failure-response（problem+json 投影）、who-is-operating（traceId）、allow-or-not（action 同源）

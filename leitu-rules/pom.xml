@@ -55,6 +55,21 @@
     </dependency>
     <dependency>
       <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-adapter-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-adapter-web</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-spring-boot-starter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
       <artifactId>leitu-example-access</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
@@ -86,6 +101,12 @@
     <dependency>
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-example-cache</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-example-spring-boot</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>

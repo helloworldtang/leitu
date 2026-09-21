@@ -27,8 +27,9 @@ public class ExportArchitecture {
 
     static final Path ROOT = Paths.get(System.getProperty("user.dir"));
     static final Path CATALOG = ROOT.resolve("catalog/problems.json");
-    static final Path RULES_FILE = ROOT.resolve(
-            "leitu-core/src/test/java/cn/youhuale/leitu/core/CoreBoundaryRulesTest.java");
+    static final List<Path> RULES_FILES = List.of(
+            ROOT.resolve("leitu-core/src/test/java/cn/youhuale/leitu/core/CoreBoundaryRulesTest.java"),
+            ROOT.resolve("leitu-rules/src/main/java/cn/youhuale/leitu/rules/LeituRules.java"));
     static final Path OUT = ROOT.resolve("docs/architecture/views.md");
 
     public static void main(String[] args) throws IOException {
@@ -37,8 +38,12 @@ public class ExportArchitecture {
             System.exit(1);
         }
         List<Entry> entries = parseEntries(Files.readString(CATALOG));
-        List<String[]> rules = Files.exists(RULES_FILE)
-                ? parseRules(Files.readString(RULES_FILE)) : List.of();
+        List<String[]> rules = new ArrayList<>();
+        for (Path rulesFile : RULES_FILES) {
+            if (Files.exists(rulesFile)) {
+                rules.addAll(parseRules(Files.readString(rulesFile)));
+            }
+        }
         Files.createDirectories(OUT.getParent());
         Files.writeString(OUT, render(entries, rules));
         System.out.println("✓ docs/architecture/views.md（" + entries.size() + " 条目，" + rules.size() + " 规则）");
@@ -107,9 +112,24 @@ public class ExportArchitecture {
 
     static List<String[]> parseRules(String src) {
         List<String[]> out = new ArrayList<>();
-        Matcher m = Pattern.compile("static final ArchRule\\s+(\\w+)[\\s\\S]*?because\\(\"([^\"]+)\"\\)").matcher(src);
+        // 剥注释（javadoc 里出现 "static final ArchRule r = ..." 示例会污染解析）
+        String clean = src.replaceAll("(?s)/\\*.*?\\*/", "").replaceAll("(?m)//.*$", "");
+        // 委托字段（= helper("modulePath")）的消息模板：取 helper 的 because 拼接式
+        Matcher helper = Pattern.compile("because\\(\"([^\"]+)\"\\s*\\+\\s*modulePath\\s*\\+\\s*\"([^\"]+)\"\\)").matcher(clean);
+        String delegateTemplate = helper.find() ? helper.group(1) + "{0}" + helper.group(2) : null;
+        Matcher m = Pattern.compile("static final ArchRule\\s+([\\p{L}\\p{N}_]+)\\s*=(.*?);", Pattern.DOTALL).matcher(clean);
         while (m.find()) {
-            out.add(new String[]{m.group(1), m.group(2)});
+            String name = m.group(1);
+            String body = m.group(2);
+            Matcher b = Pattern.compile("because\\(\"([^\"]+)\"\\)").matcher(body);
+            if (b.find()) {
+                out.add(new String[]{name, b.group(1)});
+                continue;
+            }
+            Matcher d = Pattern.compile("[\\p{L}\\p{N}_]+\\(\"([^\"]+)\"\\)").matcher(body);
+            if (d.find() && delegateTemplate != null) {
+                out.add(new String[]{name, delegateTemplate.replace("{0}", d.group(1))});
+            }
         }
         return out;
     }
@@ -123,7 +143,7 @@ public class ExportArchitecture {
         StringBuilder b = new StringBuilder();
         b.append("# 架构状态（4R 四图）\n\n")
                 .append("> 自动生成（`java scripts/ExportArchitecture.java`），勿手改。")
-                .append("数据源：catalog/problems.json + 边界规则测试。\n\n");
+                .append("数据源：catalog/problems.json + 边界规则测试（CoreBoundaryRulesTest + LeituRules）。\n\n");
 
         b.append("## Rank——顶层结构（双平面）\n\n```mermaid\nflowchart TB\n")
                 .append("  subgraph code[代码平面]\n")

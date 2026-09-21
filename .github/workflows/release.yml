@@ -28,8 +28,8 @@ jobs:
         run: |
           sed -i "s#</mirrors>#</mirrors>\n  <servers>\n    <server>\n      <id>central</id>\n      <username>\${CENTRAL_USERNAME}</username>\n      <password>\${CENTRAL_PASSWORD}</password>\n    </server>\n  </servers>#" .mvn/settings.xml
           grep -A4 '<id>central</id>' .mvn/settings.xml
-      # 发布集合：leitu-parent(pom) + 三库模块；examples 不发布
+      # 发布集合：leitu-parent(pom) + 库模块（core / rules / 三能力 / 两适配 / starter）；examples 不发布
       - name: Publish to Maven Central
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: ./mvnw -B -P release -pl .,leitu-core,leitu-rules,leitu-capability-access deploy
+        run: ./mvnw -B -P release -pl .,leitu-core,leitu-rules,leitu-capability-access,leitu-capability-data,leitu-capability-cache,leitu-spring-boot-starter,leitu-adapter-jdbc,leitu-adapter-web deploy

@@ -6,7 +6,7 @@
 
 - 愿景一句话：人和 AI 共同使用、共同迭代的标准答案库——越用越厚，越用越稳。
 - 技术栈：Java 21；宿主 Spring Boot（core 层零框架依赖）。
-- 当前阶段：**0.2.0 开发中**（v0.1.0 已发布——管道横切层四条答案）。第五～八条答案（配置来源 / 数据访问 / 失败交代 / 缓存）已入库，五条无条件必答全部 answered；API 文档已定策（drafted：集成 springdoc + knife4j，随 starter 层落地）；锁 / 存储等未覆盖，见 catalog `open` 条目（`open/drafted` 是正常态）。
+- 当前阶段：**0.2.0 开发中**（v0.1.0 已发布——管道横切层四条答案）。第五～九条答案已入库（配置来源 / 数据访问 / 失败交代 / 缓存 / API 文档），五条无条件必答全部 answered；**starter / adapter 层已落地**（引依赖即用 / JDBC 真库路径 / problem+json 投影，ADR-014 / ADR-015）；锁 / 存储等未覆盖，见 catalog `open` 条目（`open/drafted` 是正常态）。
 
 ## 最小学习集（按序，≤5 个文件）
 
@@ -14,7 +14,7 @@
 2. [catalog/problems.json](catalog/problems.json) —— 问题目录：本库回答哪些问题、各自什么状态
 3. [docs/problems/allow-or-not.md](docs/problems/allow-or-not.md) —— 问题页的标准四段式范例（为什么/机制/取舍/边界）
 4. [docs/decisions/README.md](docs/decisions/README.md) —— 决策索引：每条设计为什么是现在这样
-5. 需要动 core 设计时，再读 ADR-002 / ADR-003 / ADR-005
+5. 需要动 core 设计时，再读 ADR-002 / ADR-003 / ADR-005；动 starter / adapter 层读 ADR-014 / ADR-015
 
 ## 硬约束
 

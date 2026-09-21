@@ -304,13 +304,18 @@
       "problem": "服务对外暴露了什么（对外 API 表达）？",
       "facet": "pipeline",
       "required": "conditional",
-      "status": "drafted",
-      "stability": null,
-      "since": null,
+      "status": "answered",
+      "stability": "stable",
+      "since": "0.2.0",
       "replaced_by": null,
       "depends_on": [],
-      "notes": "已定策（ADR-013）：不自研，API 文档集成 springdoc + knife4j（OpenAPI 标准）；实现随 starter 层开启落地。",
-      "links": { "doc": "docs/problems/api-contract.md", "code": null, "rule": null, "example": null }
+      "notes": "实现已落地（ADR-013 / ADR-014 / ADR-015）：springdoc + knife4j 接线随 starter 交付；四条增值点=problem+json 投影 / traceId 头 / 动作同源建议 / 端点豁免谓词。",
+      "links": {
+        "doc": "docs/problems/api-contract.md",
+        "code": "leitu-spring-boot-starter:cn.youhuale.leitu.starter",
+        "rule": "leitu-rules:RepoBoundaryRulesTest",
+        "example": "examples/spring-boot"
+      }
     }
   ]
 }
