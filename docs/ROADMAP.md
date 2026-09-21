@@ -52,7 +52,7 @@
 - transaction-boundary 验尸裁归属（顺手正名 catalog notes 旧词）
 - lock / storage（低频场景，真实痛点再答；设计先例已齐——cache 即模板）
 - Maven Central 发布（配置就绪，等三件用户凭据：Central 账号+DNS TXT / User Token / GPG）
-- eval 基准 + 最小上下文规格（阶段三的实证义务）
+- eval 基准（种子已立：eval/ 协议 + 首条任务 + 基线；规模化与最小上下文规格待行）
 
 ## 回来时的最小阅读集
 

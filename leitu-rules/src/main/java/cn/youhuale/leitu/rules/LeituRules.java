@@ -11,8 +11,12 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  * <p>两种消费方式：
  * <ul>
  *   <li>本仓库：leitu-rules 的测试引这些规则扫描全 reactor（core + examples + 未来模块）；</li>
- *   <li>下游项目：依赖 {@code cn.youhuale:leitu-rules}，在自己测试里
- *       {@code @ArchTest static final ArchRule r = LeituRules.CORE_零框架依赖;} 守自己的架构。</li>
+ *   <li>下游项目：依赖 {@code cn.youhuale:leitu-rules}，把规则加进自己的测试或 CI。
+ *       注意类集合要<b>同时导入「下游包 + leitu 包」</b>（规则两端都要在场）——例如
+ *       {@code @AnalyzeClasses(packages = {"com.your.app", "cn.youhuale.leitu"})}，或用
+ *       {@code new ClassFileImporter().importPackages("您的包", "cn.youhuale.leitu")} 直接 API；
+ *       这样「不触碰 leitu internal」等边界在下游同样有效
+ *       （可运行示范见 eval/reference/01-entity-crud-service 的 DownstreamRulesTest）。</li>
  * </ul>
  *
  * <p>改规则=改宪法：先改对应 ADR，再改这里（变更权责矩阵：rules 改语义必须人+ADR）。

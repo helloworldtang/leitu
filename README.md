@@ -30,17 +30,40 @@
 2. 读 [问题目录](catalog/problems.json)——本库回答哪些问题、各自什么状态；
 3. 读一条完整答案：[允许吗（判定链）](docs/problems/allow-or-not.md)——四段式范例，配可运行金样本 `examples/allow-or-not`。
 
-引入依赖（Maven Central 同步后）：
+## 在业务项目中接入
+
+一个 Spring Boot 业务项目，两处改动即可用起来（完整范例：[examples/spring-boot](examples/spring-boot)）：
 
 ```xml
 <dependency>
   <groupId>cn.youhuale</groupId>
-  <artifactId>leitu-core</artifactId>
-  <version>0.1.0</version>
+  <artifactId>leitu-spring-boot-starter</artifactId>
+  <version>0.2.0-SNAPSHOT</version>
 </dependency>
 ```
 
-Central 未同步期间的备选：锁 tag 引用（[v0.1.0 tarball](https://github.com/helloworldtang/leitu/archive/refs/tags/v0.1.0.tar.gz)）。**不要引用滚动的 main 分支或 tarball**——升级必须是显式改版本号的决策动作。
+```java
+// 装配：存取器一行声明；守卫声明即收编——其余全部自动（用户 Bean 优先）
+@Bean
+DataStore<Order, String> orders(JdbcDataStoreFactory factory) {
+    return factory.create(ORDER_MAPPING);   // 显式映射：表 / 列 / 行⇄实体
+}
+
+@Bean
+Guard orderCreateGuard() {
+    return request -> "order.create".equals(request.action()) && !"admin".equals(request.subject())
+            ? Decision.deny("仅管理员可创建订单", Retry.never())
+            : Decision.allow();
+}
+```
+
+引依赖即得：执行上下文（trace 贯穿）/ 判定链 / 观测 / 配置 / problem+json 失败投影 / `/v3/api-docs` 文档端点。接入要点（均可对照 [examples/spring-boot](examples/spring-boot)）：
+
+- **依赖**：Web + JDBC 用标准 Spring 组合（`spring-boot-starter-web` / `spring-boot-starter-jdbc` + 驱动）；控制器方法参数名依赖 `-parameters` 编译标志（Spring 应用标准配置）；
+- **入口**：在请求入口绑定操作者（照范例 Filter 写法，接入你的认证体系）；
+- **表约定**：存取器表含 `tenant / id / created_by / created_at / updated_by / updated_at` 六列（见 [data-access 问题页](docs/problems/data-access.md)）。
+
+**发布状态**：坐标尚未上 Maven Central（发版待办）——当前在本仓库 `./mvnw install` 后按 `0.2.0-SNAPSHOT` 引用；对外分发以发版为准。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
 
 ## 已交付的答案
 
