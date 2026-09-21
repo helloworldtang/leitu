@@ -17,6 +17,7 @@
 | [ADR-011](ADR-011-failure-notice.md) | 问题"操作失败了"的答案：FailureNotice 交代结构 + 脱敏默认 | 已接受 |
 | [ADR-012](ADR-012-cache.md) | 问题"怎么缓存"的答案：TTL+LRU 进程内缓存 + getOrLoad 装载收编 + 租户作用域键 | 已接受 |
 | [ADR-013](ADR-013-api-doc-integration.md) | 问题"服务对外暴露了什么"的答案：不自研，集成 springdoc + knife4j | 已接受 |
+| [ADR-014](ADR-014-starter-assembly-layer.md) | starter 装配层：模块布局、宿主版本管理与 BOM | 已接受 |
 
 ## 制度
 
