@@ -2,3 +2,4 @@ cn.youhuale.leitu.starter.LeituContextAutoConfiguration
 cn.youhuale.leitu.starter.LeituGuardAutoConfiguration
 cn.youhuale.leitu.starter.LeituObserveAutoConfiguration
 cn.youhuale.leitu.starter.LeituConfigAutoConfiguration
+cn.youhuale.leitu.starter.LeituCacheAutoConfiguration

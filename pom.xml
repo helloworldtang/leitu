@@ -19,6 +19,7 @@
     <module>leitu-capability-data</module>
     <module>leitu-capability-cache</module>
     <module>leitu-spring-boot-starter</module>
+    <module>leitu-adapter-jdbc</module>
     <module>examples/allow-or-not</module>
     <module>examples/who-is-operating</module>
     <module>examples/access</module>
