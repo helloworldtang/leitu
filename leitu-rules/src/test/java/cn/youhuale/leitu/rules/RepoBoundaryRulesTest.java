@@ -70,6 +70,9 @@ class RepoBoundaryRulesTest {
             if (!Files.exists(modulePom)) {
                 continue;
             }
+            if (!"cn.youhuale".equals(ownGroupId(modulePom))) {
+                continue;   // 外来 groupId = 下游探针（如 eval/reference/*）：它是被检查的下游工程，不是本库产物
+            }
             String artifactId = ownArtifactId(modulePom);
             if ("leitu-rules".equals(artifactId)) {
                 continue;   // 本模块无需把自己列为依赖
@@ -88,6 +91,80 @@ class RepoBoundaryRulesTest {
             out.add(m.group(1).trim());
         }
         return out;
+    }
+
+    /**
+     * 每个待发布模块都必须出现在根 pom 的 {@code <dependencyManagement>} 里（#22）。
+     *
+     * <p>理由：下游用法是 {@code import cn.youhuale:leitu-parent:<版本>}（scope=import）拿到
+     * 全部版本号——漏一个模块，下游用它就得自己手写 version，而手写的版本号迟早漂。
+     * 此前 leitu-rules 就漏了：它正是"把规则带给下游"的那个模块，却偏偏是唯一要写版本的。
+     *
+     * <p>examples/* 不参与发布，因此不在本守卫的范围里。
+     */
+    @Test
+    void 每个待发布模块都在dependencyManagement里_下游才能免版本号() throws IOException {
+        Path root = CatalogIntegrityTest.ROOT;
+        Set<String> managed = managedArtifactIds(root.resolve("pom.xml"));
+
+        for (String dir : rootModules(root.resolve("pom.xml"))) {
+            if (dir.startsWith("examples/")) {
+                continue;   // 示例不发布
+            }
+            Path modulePom = root.resolve(dir).resolve("pom.xml");
+            if (!Files.exists(modulePom)) {
+                continue;
+            }
+            if (!"cn.youhuale".equals(ownGroupId(modulePom))) {
+                continue;   // 下游探针不是本库产物
+            }
+            String artifactId = ownArtifactId(modulePom);
+            assertTrue(managed.contains(artifactId),
+                    "模块 " + dir + "（" + artifactId + "）不在根 pom 的 <dependencyManagement> 里——"
+                            + "下游 import leitu-parent 后拿不到它的版本，只能手写，"
+                            + "而手写的版本号是未来某次升级事故的起点。"
+                            + "修复：在根 pom 的 dependencyManagement 补一条该模块的版本条目");
+        }
+    }
+
+    /**
+     * 反向自测：抽取逻辑本身必须有效——不然上面两条会变成"解析失败 = 一切正常"的恒绿。
+     * 这里直接对着根 pom 断言"能抽出不少于 7 个本库条目"，且 leitu-core 必定在其中。
+     */
+    @Test
+    void dependencyManagement解析出来了_守门人不是恒绿() throws IOException {
+        Set<String> managed = managedArtifactIds(CatalogIntegrityTest.ROOT.resolve("pom.xml"));
+        assertTrue(managed.size() >= 7, "根 pom 的 dependencyManagement 解析异常，只抽到 " + managed.size() + " 个");
+        assertTrue(managed.contains("leitu-core"), "leitu-core 应当在 dependencyManagement 里：" + managed);
+    }
+
+    private static Set<String> managedArtifactIds(Path parentPom) throws IOException {
+        String text = Files.readString(parentPom);
+        Matcher dm = Pattern.compile("<dependencyManagement>(.*?)</dependencyManagement>", Pattern.DOTALL)
+                .matcher(text);
+        Set<String> out = new HashSet<>();
+        while (dm.find()) {
+            Matcher artifact = Pattern.compile(
+                            "<groupId>cn\\.youhuale</groupId>\\s*<artifactId>([^<]+)</artifactId>")
+                    .matcher(dm.group(1));
+            while (artifact.find()) {
+                out.add(artifact.group(1).trim());
+            }
+        }
+        return out;
+    }
+
+    /** 模块自己的 groupId（同样先摘掉 parent 块）；没有显式声明即继承父 pom 的 cn.youhuale。 */
+    private static String ownGroupId(Path modulePom) throws IOException {
+        String text = Files.readString(modulePom).replaceAll("(?s)<parent>.*?</parent>", "");
+        Matcher m = Pattern.compile("<groupId>([^<]+)</groupId>").matcher(text);
+        int start = m.find() ? m.start() : Integer.MAX_VALUE;
+        Matcher buildGroupId = Pattern.compile("<build>.*?<groupId>([^<]+)</groupId>", Pattern.DOTALL)
+                .matcher(text);
+        if (buildGroupId.find() && buildGroupId.start() < start) {
+            return buildGroupId.group(1).trim();
+        }
+        return m.find() ? m.group(1).trim() : "cn.youhuale";
     }
 
     /** 模块自己的 artifactId（先摘掉 parent 块，免得取到 leitu-parent）。 */

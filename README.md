@@ -34,11 +34,36 @@
 
 一个 Spring Boot 业务项目，两处改动即可用起来（完整范例：[examples/spring-boot](examples/spring-boot)）：
 
+先在 dependencyManagement 里引入 leitu-parent（BOM）——**一次引入，八个模块都不用写版本号**
+（手写版本号是未来某次升级事故的起点；哪天想 pin 版本，只改这一处）：
+
+```xml
+<dependencyManagement>
+  <dependencies>
+    <dependency>
+      <groupId>cn.youhuale</groupId>
+      <artifactId>leitu-parent</artifactId>
+      <version>0.2.0-SNAPSHOT</version>
+      <type>pom</type>
+      <scope>import</scope>
+    </dependency>
+  </dependencies>
+</dependencyManagement>
+```
+
+再按需引依赖（版本号可省略）：
+
 ```xml
 <dependency>
   <groupId>cn.youhuale</groupId>
   <artifactId>leitu-spring-boot-starter</artifactId>
-  <version>0.2.0-SNAPSHOT</version>
+</dependency>
+
+<!-- 把 leitu 的架构规则接到自己的工程里：import 之后同样不用写版本号 -->
+<dependency>
+  <groupId>cn.youhuale</groupId>
+  <artifactId>leitu-rules</artifactId>
+  <scope>test</scope>
 </dependency>
 ```
 
@@ -104,13 +129,13 @@ Guard orderCreateGuard() {
 
 - [AGENTS.md](AGENTS.md)——AI 协作入口（最小学习集 / 硬约束 / 贡献答案流程）
 - [路线图](docs/ROADMAP.md)——阶段、进度与下一步（人类视角；机器视角见问题目录）
-- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~013）
+- [决策记录](docs/decisions/)——每条设计为什么是现在这样（ADR-001~015；CI 校验本文档写的上限与目录里的实际编号一致）
 - [术语表](docs/GLOSSARY.md)——术语与限用词表
 
 ## 状态与路线
 
 - **0.1.0（已发布）**：管道横切层——四条答案（who-is-operating / allow-or-not / what-happened + access 能力），每个操作在场的身份 / 放行 / 记录 / 访问判定；
-- **0.2.0 开发中**：第五～九条答案已入库（config-source / data-access / failure-response / cache / api-contract）+ **starter / adapter 层首批落地**——引依赖即用的默认装配、JDBC 真库路径、problem+json 投影——**五条无条件必答全部 answered**，191 个测试全绿；
+- **0.2.0 开发中**：第五～九条答案已入库（config-source / data-access / failure-response / cache / api-contract）+ **starter / adapter 层首批落地**——引依赖即用的默认装配、JDBC 真库路径、problem+json 投影——**五条无条件必答全部 answered**，测试全绿（数量由 CI 断言，文档不写死——写死的第二天就开始漂）；
 - **API 文档已落地（answered）**：springdoc + knife4j 接线随 starter 交付（ADR-013 四条增值点）；
 - **未覆盖**：锁 / 存储，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
 - 下一程：dogfood（真实项目接入验证）→ 发版判定；

@@ -18,11 +18,15 @@
 2. 按任务卡的「允许阅读」清单执行，不得阅读 `eval/reference/**`；
 3. 按任务卡验收命令跑结果，登记上述四类数字。
 
+**参考解本身也是要跑的**：`./mvnw -B -P eval verify` 会把 `reference/**` 拉进 reactor 一起验证
+（CI 每次 push 都跑，见 .github/workflows/ci.yml）——它是"规则在下游真的有效"唯一可执行的证据，
+一个从未被执行过的答案等于没有答案。
+
 ## 任务与基线
 
 | # | 任务 | 基线（2026-09-21 · 预演，非独立采样） |
 |---|---|---|
-| 01 | [最小实体 CRUD 服务](tasks/01-entity-crud-service.md) | 完成 ✅ · 一次绿灯 ✅ · 7 测试全绿 |
+| 01 | [最小实体 CRUD 服务](tasks/01-entity-crud-service.md) | 完成 ✅ · 一次绿灯 ✅ · 参考解测试全绿（数量由 CI 的 `-P eval` 步骤回答，不写死在文档里） |
 
 参考解：[reference/01-entity-crud-service](reference/01-entity-crud-service)（评分对照用；评测时不得给被评 agent 看）。
 详细基线记录见 [baselines.md](baselines.md)。

@@ -23,7 +23,7 @@
 
 ## 阶段二 · 三进度明细（截至 2026-09-21）
 
-**answered = 9，drafted = 0，191 测试全绿**（仓库 [helloworldtang/leitu](https://github.com/helloworldtang/leitu)，CI 绿，开发版 0.2.0-SNAPSHOT）：
+**answered = 9，drafted = 0，测试全绿**（数量由 CI 校验，文档不写死）（仓库 [helloworldtang/leitu](https://github.com/helloworldtang/leitu)，CI 绿，开发版 0.2.0-SNAPSHOT）：
 
 | 环节 | 答案 | 模块 | 交付日 |
 |---|---|---|---|
