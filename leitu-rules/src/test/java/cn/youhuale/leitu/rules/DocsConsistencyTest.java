@@ -58,11 +58,18 @@ class DocsConsistencyTest {
     }
 
     /**
-     * README 一度写着 ADR-001~013，而目录里实际已经到 015（#26）。
-     * 这类"导航写错了"的小事最伤 AI：它按导航去读，以为只有 13 条决策。
+     * 文档里宣称的 ADR 范围必须对得上目录实际的最大编号（#26）。
+     *
+     * <p>README 一度写着 ADR-001~013，而目录里实际已经到 015；修完 README 后我又漏了
+     * ROADMAP 导航里同样的一处——因为这一版的守卫只扫 README。守门人守得比它该守的窄，
+     * 漏掉的那部分就退化成"靠人记得改"。所以这里改成扫全仓 markdown。
+     *
+     * <p><b>判据为何要带"当前态"过滤</b>：ROADMAP 阶段表里还有一句
+     * "ADR-001~007 … ✅ 完成（2026-09-07）"——那是历史快照，说它错就等于逼人篡改史实。
+     * 因此只在<b>该行不含日期</b>时才按"当前上限"校验：带日期的是阶段性回顾，不带日期的是导航。
      */
     @Test
-    void README写的ADR范围必须覆盖目录里的最大编号() throws IOException {
+    void 文档宣称的ADR范围必须覆盖目录里的最大编号() throws IOException {
         int max = 0;
         try (Stream<Path> files = Files.list(ROOT.resolve("docs/decisions"))) {
             for (Path f : files.toList()) {
@@ -74,16 +81,31 @@ class DocsConsistencyTest {
         }
         assertTrue(max > 0, "docs/decisions 里没解析到任何 ADR 文件——测试脚手架失效");
 
-        String readme = read(ROOT.resolve("README.md"));
-        Matcher range = Pattern.compile("ADR-001~(\\d{3})").matcher(readme);
-        assertTrue(range.find(), "README 应当标注 ADR 的范围（如 ADR-001~0" + max + "）");
-        assertEqualsRange(max, Integer.parseInt(range.group(1)));
-    }
-
-    private static void assertEqualsRange(int actualMax, int claimed) {
-        assertTrue(claimed == actualMax,
-                "README 写的 ADR 上限 " + claimed + " 与目录里的实际最大编号 " + actualMax + " 不一致："
-                        + "导航错了比不存在更坏——按导航去读的人会漏掉后面的决策");
+        Pattern range = Pattern.compile("ADR-001~(\\d{3})");
+        Pattern dated = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+        List<Path> docs = new ArrayList<>();
+        try (var walk = Files.walk(ROOT)) {
+            docs.addAll(walk
+                    .filter(pa -> pa.toString().endsWith(".md"))
+                    .filter(pa -> !pa.toString().contains("/target/"))
+                    .toList());
+        }
+        int checked = 0;
+        for (Path doc : docs) {
+            for (String line : read(doc).split("\\R")) {
+                Matcher r = range.matcher(line);
+                if (!r.find() || dated.matcher(line).find()) {
+                    continue;   // 无范围表述，或这是带日期的历史快照
+                }
+                checked++;
+                int claimed = Integer.parseInt(r.group(1));
+                assertTrue(claimed == max,
+                        "文档 " + ROOT.relativize(doc) + " 写的 ADR 上限是 " + claimed
+                                + "，而 docs/decisions 里的实际最大编号是 " + max + "："
+                                + "导航错了比不存在更坏——按导航去读的人会漏掉后面的决策。（原文：" + line.trim() + "）");
+            }
+        }
+        assertTrue(checked >= 1, "全仓 markdown 里没找到任何 ADR 范围表述——守卫会不会是恒绿？");
     }
 
     /**

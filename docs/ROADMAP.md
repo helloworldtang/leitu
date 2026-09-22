@@ -58,5 +58,5 @@
 
 1. 本页（进度与去向）
 2. [catalog/problems.json](../catalog/problems.json)（机器权威状态）
-3. [docs/decisions/](decisions/README.md)（ADR-001~013，每条设计为什么是现在这样）
+3. [docs/decisions/](decisions/README.md)（ADR-001~015，每条设计为什么是现在这样）
 4. 最近 git log（每条答案一个提交，message 即摘要）
