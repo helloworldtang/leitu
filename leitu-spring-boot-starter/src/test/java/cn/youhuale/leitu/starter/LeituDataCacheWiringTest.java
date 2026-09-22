@@ -3,12 +3,14 @@ package cn.youhuale.leitu.starter;
 import cn.youhuale.leitu.adapter.jdbc.JdbcAdapterAutoConfiguration;
 import cn.youhuale.leitu.adapter.jdbc.JdbcDataStoreFactory;
 import cn.youhuale.leitu.capability.cache.model.CachePolicy;
+import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import javax.sql.DataSource;
+import java.time.Clock;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,7 +60,8 @@ class LeituDataCacheWiringTest {
     @Test
     void 用户Factory优先() {
         DataSource ds = Mockito.mock(DataSource.class);
-        JdbcDataStoreFactory custom = new JdbcDataStoreFactory(ds);
+        JdbcDataStoreFactory custom = new JdbcDataStoreFactory(
+                ds, ExecutionContextReader.threadLocal(), Clock.systemUTC());
         runner.withBean(DataSource.class, () -> ds)
                 .withBean(JdbcDataStoreFactory.class, () -> custom)
                 .run(ctx -> assertThat(ctx.getBean(JdbcDataStoreFactory.class)).isSameAs(custom));

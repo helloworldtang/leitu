@@ -5,6 +5,7 @@ import cn.youhuale.leitu.capability.data.model.AuditFields;
 import cn.youhuale.leitu.capability.data.model.Auditable;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
+import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
 import cn.youhuale.leitu.core.context.model.ExecutionContext;
 import cn.youhuale.leitu.core.context.model.Operator;
 import cn.youhuale.leitu.core.observe.model.ObservationEvent;
@@ -15,6 +16,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -69,7 +71,7 @@ class JdbcDataStoreFactoryTest {
         ds.setDriverClassName("org.h2.Driver");
         dataSource = ds;
         JdbcClient.create(ds).sql(TABLE_DDL).update();
-        factory = new JdbcDataStoreFactory(ds);
+        factory = new JdbcDataStoreFactory(ds, ExecutionContextReader.threadLocal(), Clock.systemUTC());
     }
 
     @BeforeEach
@@ -165,5 +167,27 @@ class JdbcDataStoreFactoryTest {
         DataStore<TestOrder, String> observed = DataStores.observing(store(), TestOrder::id, events::add);
         as("alice", "tenant-a", () -> observed.save(TestOrder.create("o-1", 100L)));
         assertThat(events).anyMatch(e -> e.name().equals("data.saved"));
+    }
+
+    /**
+     * 反向自测：工厂的读取器来自装配方注入，绝不回落到全局线程绑定。
+     * 若有人把「无读取器时回落 ExecutionContextReader.threadLocal()」的捷径加回来，
+     * 行会落进线程上绑的 tenant-a，前两条断言立刻变红。
+     */
+    @Test
+    void 注入的读取器决定租户_不回落全局线程绑定() {
+        ExecutionContextReader injected =
+                () -> ExecutionContext.of(Operator.human("carol", "tenant-injected"), "t-injected");
+        DataStore<TestOrder, String> injectedStore =
+                new JdbcDataStoreFactory(dataSource, injected, Clock.systemUTC()).create(MAPPING);
+
+        // 线程上绑的是 tenant-a，但写入必须落在注入读取器的租户里
+        TestOrder saved = as("alice", "tenant-a", () -> injectedStore.save(TestOrder.create("o-inj", 100L)));
+        assertThat(saved.auditFields().createdBy()).as("审计的操作者同样取自注入的读取器").isEqualTo("carol");
+
+        assertThat(as("alice", "tenant-a", () -> store().findById("o-inj")))
+                .as("线程绑定的 tenant-a 不该看到——行没落在它那儿").isEmpty();
+        assertThat(as("carol", "tenant-injected", () -> store().findById("o-inj")))
+                .as("注入读取器的租户才该看到").isPresent();
     }
 }

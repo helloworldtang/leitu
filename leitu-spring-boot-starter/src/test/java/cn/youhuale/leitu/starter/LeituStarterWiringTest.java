@@ -100,6 +100,36 @@ class LeituStarterWiringTest {
                 assertThat(ctx.getBean(ConfigReader.class).get("leitu.test.bridge")).contains("from-spring"));
     }
 
+    /**
+     * 反向自测：配置中心必须压过本地 application.yml 之类的制品内基线。
+     *
+     * <p>若有人把整条 Environment 放回链头（回到单一 EnvironmentConfigSource），
+     * 这里立刻变红——运维在配置中心改的值会被制品里写死的默认值盖掉，
+     * 而症状只是"改了不生效"，极难归因。
+     */
+    @Test
+    void 配置中心压过本地文件层() {
+        runner.withPropertyValues("leitu.test.center=from-artifact")
+                .withBean("center", ConfigSource.class, () -> ConfigSources.fromMap(
+                        "配置中心", Map.of("leitu.test.center", "from-center")))
+                .run(ctx -> assertThat(ctx.getBean(ConfigReader.class).get("leitu.test.center"))
+                        .contains("from-center"));
+    }
+
+    /** 运行时覆盖（系统属性/命令行）仍在最上层——启动这一次的意志压过配置中心。 */
+    @Test
+    void 系统属性压过配置中心() {
+        System.setProperty("leitu.test.override", "from-system-property");
+        try {
+            runner.withBean("center", ConfigSource.class, () -> ConfigSources.fromMap(
+                    "配置中心", Map.of("leitu.test.override", "from-center")))
+                    .run(ctx -> assertThat(ctx.getBean(ConfigReader.class).get("leitu.test.override"))
+                            .contains("from-system-property"));
+        } finally {
+            System.clearProperty("leitu.test.override");
+        }
+    }
+
     @Test
     void 应用声明的配置源_插在三源之前() {
         runner.withBean("customSource", ConfigSource.class, () -> ConfigSources.fromMap(

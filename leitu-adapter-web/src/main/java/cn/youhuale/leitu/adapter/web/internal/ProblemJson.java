@@ -25,7 +25,7 @@ final class ProblemJson {
     static int statusOf(FailureNotice notice) {
         String override = notice.attributes().get(STATUS_ATTRIBUTE);
         if (override != null) {
-            int status = Integer.parseInt(override);
+            int status = parseStatus(override);
             if (status < 400 || status > 599) {
                 throw new IllegalArgumentException("\"http.status\" 必须是 4xx/5xx（400–599）：当前 " + status);
             }
@@ -35,6 +35,21 @@ final class ProblemJson {
             return 500;
         }
         return FailureNotice.GUARD_TYPE.equals(notice.type()) ? 403 : 400;
+    }
+
+    /**
+     * 显式解析为十进制整数——不裸用 {@code Integer.parseInt}：它抛的 NumberFormatException
+     * 会逃出 {@code @ExceptionHandler}，把整条交代通道打回 Spring 默认错误页
+     * （traceId 头与 problem+json 一起丢失），而根因只是一个属性写错。
+     * 这里统一成教学式失败，由调用方决定降级。
+     */
+    private static int parseStatus(String raw) {
+        try {
+            return Integer.parseInt(raw.strip());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("\"http.status\" 必须是十进制整数（400–599）：当前 \""
+                    + raw + "\"；正确示例：\"503\"", e);
+        }
     }
 
     static Map<String, Object> bodyOf(FailureNotice notice, int status) {
