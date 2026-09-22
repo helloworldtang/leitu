@@ -2,15 +2,19 @@ package cn.youhuale.leitu.rules;
 
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.api.io.TempDir;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -63,25 +67,150 @@ class CatalogIntegrityTest {
             if (!"answered".equals(e.status())) {
                 continue;
             }
-            assertTrue(e.stability() != null, e.id() + "：answered 必须声明 stability");
-            assertTrue(e.doc() != null, e.id() + "：answered 缺 links.doc（问题页）");
-            assertTrue(e.code() != null, e.id() + "：answered 缺 links.code");
-            assertTrue(e.rule() != null, e.id() + "：answered 缺 links.rule（守护规则）");
-            assertTrue(e.example() != null, e.id() + "：answered 缺 links.example（金样本）");
-
-            assertTrue(Files.exists(ROOT.resolve(e.doc())), e.id() + "：问题页不存在 " + e.doc());
-
-            String[] code = e.code().split(":", 2);
-            assertTrue(code.length == 2, e.id() + "：code 格式应为 模块:包名，当前 " + e.code());
-            Path pkg = ROOT.resolve(code[0] + "/src/main/java/" + code[1].replace('.', '/'));
-            assertTrue(Files.exists(pkg), e.id() + "：代码包不存在 " + pkg);
-
-            String[] rule = e.rule().split(":", 2);
-            assertTrue(locate(rule[0], rule[1] + ".java") != null,
-                    e.id() + "：守护规则类 " + e.rule() + " 不存在");
-
-            assertTrue(Files.exists(ROOT.resolve(e.example())), e.id() + "：金样本目录不存在 " + e.example());
+            List<String> problems = fiveKitProblems(e, ROOT);
+            assertTrue(problems.isEmpty(), e.id() + "：" + String.join("；", problems));
         }
+    }
+
+    /**
+     * 五件套判据——<b>对任意根目录可复用</b>，返回问题清单（空=通过）。
+     *
+     * <p>抽出来的唯一理由：让判据能被反向自测调用。存在性断言最典型的退化是"永远绿"——
+     * 路径算错、目录扫不到、判据写反，都会静默通过，而没人发现这把锁其实没锁上。
+     * 没有反向自测，"answered 的宣告权在机器"就只是一句宣言。
+     */
+    static List<String> fiveKitProblems(Catalog.Entry e, Path root) throws IOException {
+        List<String> problems = new ArrayList<>();
+        if (e.stability() == null) {
+            problems.add("answered 必须声明 stability");
+        }
+        if (e.doc() == null) {
+            problems.add("缺 links.doc（问题页）");
+        }
+        if (e.code() == null) {
+            problems.add("缺 links.code");
+        }
+        if (e.rule() == null) {
+            problems.add("缺 links.rule（守护规则）");
+        }
+        if (e.example() == null) {
+            problems.add("缺 links.example（金样本）");
+        }
+        if (e.doc() != null && !Files.exists(root.resolve(e.doc()))) {
+            problems.add("问题页不存在 " + e.doc());
+        }
+        if (e.code() != null) {
+            String[] code = e.code().split(":", 2);
+            if (code.length != 2) {
+                problems.add("code 格式应为 模块:包名，当前 " + e.code());
+            } else {
+                Path pkg = root.resolve(code[0] + "/src/main/java/" + code[1].replace('.', '/'));
+                if (!Files.exists(pkg)) {
+                    problems.add("代码包不存在 " + e.code());
+                }
+            }
+        }
+        if (e.rule() != null) {
+            String[] rule = e.rule().split(":", 2);
+            if (rule.length != 2 || locate(root, rule[0], rule[1] + ".java") == null) {
+                problems.add("守护规则类不存在 " + e.rule());
+            }
+        }
+        if (e.example() != null) {
+            Path example = root.resolve(e.example());
+            if (!Files.exists(example)) {
+                problems.add("金样本目录不存在 " + e.example());
+            } else if (!Files.exists(example.resolve("src/test/java"))) {
+                // 只验"目录存在"会让一个空目录拿到 answered——金样本必须真的能跑
+                problems.add("金样本目录里没有 src/test/java：只有 README 的空目录不算金样本 " + e.example());
+            }
+        }
+        return problems;
+    }
+
+    /**
+     * <b>反向自测</b>：故意造出缺件的 answered，确认判据真的会红。
+     *
+     * <p>三例分别覆盖三类退化——缺金样本目录、金样本是个空壳、缺守护规则。
+     * 任何一条不再报红，就意味着这把锁已经失效，而主测试仍会静默绿。
+     */
+    @Test
+    void 反向自测_五件套缺件必然报红(@TempDir Path tmp) throws IOException {
+        // 先在临时根里把五件套造齐（问题页 / 代码包 / 规则类 / 金样本含测试）
+        Catalog.Entry ok = new Catalog.Entry("neg.ok", "反向自测基线", "pipeline", "always",
+                "answered", "stable", List.of(),
+                "docs/problems/neg.md",
+                "leitu-core:cn.youhuale.leitu.core.context",
+                "leitu-core:CoreBoundaryRulesTest",
+                "examples/neg");
+        writeFiveKit(tmp, ok, true);
+        assertTrue(fiveKitProblems(ok, tmp).isEmpty(),
+                "五件套齐全时判据必须放行——否则反向自测本身是错的：" + fiveKitProblems(ok, tmp));
+
+        // 1) 缺金样本目录（造齐后再把整个目录树删掉）
+        Catalog.Entry noExample = withExample(ok, "examples/missing");
+        writeFiveKit(tmp, noExample, true);
+        deleteTree(tmp.resolve("examples/missing"));
+        assertRed(fiveKitProblems(noExample, tmp), "金样本目录不存在");
+
+        // 2) 金样本是个空壳（只有目录，没有 src/test/java）
+        Catalog.Entry hollow = withExample(ok, "examples/hollow");
+        writeFiveKit(tmp, hollow, false);
+        assertRed(fiveKitProblems(hollow, tmp), "空目录");
+
+        // 3) 缺守护规则
+        Catalog.Entry noRule = new Catalog.Entry("neg.norule", "反向自测-缺规则", "pipeline", "always",
+                "answered", "stable", List.of(),
+                "docs/problems/neg.md",
+                "leitu-core:cn.youhuale.leitu.core.context",
+                "leitu-core:NoSuchRulesTest",
+                "examples/neg");
+        writeFiveKit(tmp, noRule, true);
+        Files.delete(tmp.resolve("leitu-core/src/test/java/NoSuchRulesTest.java"));
+        assertRed(fiveKitProblems(noRule, tmp), "守护规则类不存在");
+    }
+
+    /** 删掉整棵目录树（Files.delete 对非空目录会拒绝）。 */
+    private static void deleteTree(Path dir) throws IOException {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        try (Stream<Path> s = Files.walk(dir)) {
+            for (Path p : s.sorted(java.util.Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(p);
+            }
+        }
+    }
+
+    private static Catalog.Entry withExample(Catalog.Entry base, String example) {
+        return new Catalog.Entry(base.id(), base.problem(), base.facet(), base.required(), base.status(),
+                base.stability(), base.dependsOn(), base.doc(), base.code(), base.rule(), example);
+    }
+
+    /** 在 root 下按条目的 links 造出对应文件；withTests=false 时金样本只留空目录。 */
+    private static void writeFiveKit(Path root, Catalog.Entry e, boolean withTests) throws IOException {
+        Path doc = root.resolve(e.doc());
+        Files.createDirectories(doc.getParent());
+        Files.writeString(doc, "# 反向自测占位\n");
+
+        String[] code = e.code().split(":", 2);
+        Files.createDirectories(root.resolve(code[0] + "/src/main/java/" + code[1].replace('.', '/')));
+
+        String[] rule = e.rule().split(":", 2);
+        Files.createDirectories(root.resolve(rule[0] + "/src/test/java"));
+        Files.writeString(root.resolve(rule[0] + "/src/test/java/" + rule[1] + ".java"), "// 占位\n");
+
+        Path example = root.resolve(e.example());
+        Files.createDirectories(example);
+        if (withTests) {
+            Files.createDirectories(example.resolve("src/test/java"));
+        }
+    }
+
+    private static void assertRed(List<String> problems, String keyword) {
+        assertFalse(problems.isEmpty(), "守卫失效：缺件（" + keyword + "）竟然判为通过");
+        assertTrue(problems.stream().anyMatch(p -> p.contains(keyword)),
+                "报红指向了别处（" + keyword + "）：" + problems);
     }
 
     @Test
@@ -133,8 +262,8 @@ class CatalogIntegrityTest {
                 });
     }
 
-    Path locate(String module, String fileName) throws IOException {
-        Path base = ROOT.resolve(module + "/src/test/java");
+    static Path locate(Path root, String module, String fileName) throws IOException {
+        Path base = root.resolve(module + "/src/test/java");
         if (!Files.exists(base)) {
             return null;
         }
