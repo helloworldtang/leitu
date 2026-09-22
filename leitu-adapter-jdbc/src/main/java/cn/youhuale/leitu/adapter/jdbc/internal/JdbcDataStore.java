@@ -5,6 +5,7 @@ import cn.youhuale.leitu.capability.data.model.AuditFields;
 import cn.youhuale.leitu.capability.data.model.Auditable;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.sql.Timestamp;
@@ -19,8 +20,9 @@ import java.util.Optional;
  * DataStore 的 JDBC 实现（内部）：落实三条合同——租户作用域（WHERE tenant = ?）、
  * 审计盖章（复用 AuditFields.stampedBy / restampedBy，算法单源）、主键在租户作用域内唯一（(tenant, id)）。
  *
- * <p>save 以"行存在性"为准：先查已有行的 created 对——在则更新章（created 保留），
- * 不在则插入章（四件同源同刻）。并发写竞争由数据库唯一约束 (tenant, id) 兜底，冲突大声失败。
+ * <p>save 是 upsert：先 UPDATE（行在则改、created 保留），影响 0 行才 INSERT（四件同源同刻）。
+ * 两个并发首存必然撞上唯一约束 (tenant, id)——撞上的一方转为更新路径，创建信息归先到者，
+ * 而不是把 DuplicateKey 抛给调用方（并发首存是正常竞争，不是错误）。
  *
  * <p>外部一律经 {@code JdbcDataStoreFactory.create(...)} 获取，不直接实例化。
  */
@@ -55,19 +57,44 @@ public final class JdbcDataStore<T extends Auditable, ID> implements DataStore<T
                     + "，values=" + values.size() + "（显式映射错位是装配错误，大声失败）");
         }
 
-        Optional<AuditFields> existing = existingStamp(tenant, id);
-        if (existing.isPresent()) {
-            AuditFields stamped = existing.get().restampedBy(operator, now);
-            jdbc.sql(updateSql()).param(operator).param(Timestamp.from(now))
-                    .params(values).param(tenant).param(id).update();
-            return stamped(entity, stamped);
+        Optional<AuditFields> updated = updateExisting(tenant, id, values, operator, now);
+        if (updated.isPresent()) {
+            return stamped(entity, updated.get());
         }
-        AuditFields stamped = AuditFields.stampedBy(operator, now);
+        try {
+            insert(tenant, id, values, operator, now);
+        } catch (DuplicateKeyException e) {
+            // 并发首存：另一线程刚写入同一 (tenant, id)。这不是错误——转更新路径，
+            // created 归先到者，后到者只盖 updated 章。抛给调用方会让"并发首次写入"变成随机失败。
+            AuditFields restamped = updateExisting(tenant, id, values, operator, now)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "并发写冲突后转更新仍影响 0 行：行 [" + tenant + "/" + id
+                                    + "] 在冲突瞬间被并发删除——重试本次 save", e));
+            return stamped(entity, restamped);
+        }
+        return stamped(entity, AuditFields.stampedBy(operator, now));
+    }
+
+    /** 更新既有行并返回盖好更新章的字段；行不在则 empty（调用方据此改走插入）。 */
+    private Optional<AuditFields> updateExisting(String tenant, ID id, List<Object> values,
+                                                String operator, Instant now) {
+        int rows = jdbc.sql(updateSql()).param(operator).param(Timestamp.from(now))
+                .params(values).param(tenant).param(id).update();
+        if (rows == 0) {
+            return Optional.empty();
+        }
+        // 更新已生效却读不到 created 对：只可能是行在更新与回读之间被并发删除——
+        // 此时无从追溯创建信息，退回插入章，不假装知道 created 是谁。
+        AuditFields existing = existingStamp(tenant, id)
+                .orElseGet(() -> AuditFields.stampedBy(operator, now));
+        return Optional.of(existing.restampedBy(operator, now));
+    }
+
+    private void insert(String tenant, ID id, List<Object> values, String operator, Instant now) {
         jdbc.sql(insertSql()).param(tenant).param(id)
                 .param(operator).param(Timestamp.from(now))
                 .param(operator).param(Timestamp.from(now))
                 .params(values).update();
-        return stamped(entity, stamped);
     }
 
     // Java 无自类型：协变返回保证此处强转运行期安全（与 InMemoryDataStore 同款约定）。
@@ -147,8 +174,17 @@ public final class JdbcDataStore<T extends Auditable, ID> implements DataStore<T
     private Optional<AuditFields> existingStamp(String tenant, ID id) {
         return jdbc.sql(existingStampSql()).param(tenant).param(id)
                 .query((rs, rowNum) -> {
+                    // 审计列 NULL 必须大声：这里若裸 NPE，调用方只能看到
+                    // "NullPointerException" 而无上下文——真因（表缺审计列 / 历史行未回填）要自己猜。
+                    Timestamp createdAtTs = rs.getTimestamp("created_at");
+                    if (createdAtTs == null) {
+                        throw new IllegalStateException("表 " + mapping.table() + " 的 created_at 为 NULL"
+                                + "（tenant=" + tenant + ", id=" + id + "）：更新路径靠它保留创建信息，读不到就无法盖章。"
+                                + "修复二选一——① 给 created_at 加 NOT NULL 并回填历史行；"
+                                + "② 该行本就是脏数据，清掉后重新写入");
+                    }
                     String createdBy = rs.getString("created_by");
-                    Instant createdAt = rs.getTimestamp("created_at").toInstant();
+                    Instant createdAt = createdAtTs.toInstant();
                     // 借"全满"合法态承载已有行的 created 对，随后 restampedBy 换新 updated 对（盖章算法单源复用）
                     return new AuditFields(createdBy, createdAt, createdBy, createdAt);
                 })

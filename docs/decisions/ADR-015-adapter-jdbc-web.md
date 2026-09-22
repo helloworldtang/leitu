@@ -12,7 +12,7 @@ ADR-014 定下模块布局后，绑定层需要两条「第一条路径」的具
 
 - 绑定方式：spring-jdbc（JdbcClient），零 ORM、零反射、零注解——表/列/行⇄实体映射全部显式给出（JdbcMapping），延续「拒隐式魔法」教义；
 - 表约定（v1 固定，扩展留缝）：单表；tenant、id、created_by、created_at、updated_by、updated_at 六列由 adapter 统一读写；业务列由映射声明；
-- 三条合同落位：租户作用域（一切语句 WHERE tenant = ?；他租户不可见、不泄漏、不报错；"-" 是系统作用域非通配）；审计盖章（复用 AuditFields.stampedBy / restampedBy，行存在性定插改）；主键 (tenant, id)（跨租户同 id 两行；并发竞争由唯一约束兜底，冲突大声失败）；
+- 三条合同落位：租户作用域（一切语句 WHERE tenant = ?；他租户不可见、不泄漏、不报错；"-" 是系统作用域非通配）；审计盖章（复用 AuditFields.stampedBy / restampedBy，行存在性定插改）；主键 (tenant, id)（跨租户同 id 两行；save 是 upsert：先 UPDATE、0 行才 INSERT，并发首存撞唯一约束时转更新路径、创建信息归先到者——并发首存是正常竞争，不是错误，不该把约束冲突抛给调用方。原写"冲突大声失败"是错的：那等于让两个请求同时首次写入同一主键时随机失败）；
 - 装配：容器有 DataSource 时提供 JdbcDataStoreFactory（条件装配、用户 Bean 优先）；具体存取器由应用一行声明（泛型实体无法全局兜底，见 ADR-014）；
 - 测试：H2 集成金测试（隔离/盖章/键/系统作用域/装饰组合）。
 
