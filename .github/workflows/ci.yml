@@ -11,6 +11,9 @@ jobs:
           java-version: '21'
           cache: maven
       - run: ./mvnw -B verify
+      # eval 参考解（#25）：这是"规则在下游真的有效"唯一可执行的证据，此前它从不参与任何构建——
+      # 一个从未被执行过的答案，等于没有答案。跑 -P eval 会把它拉进 reactor 一起 verify。
+      - run: ./mvnw -B -P eval verify
       # 防漂移：重新生成 4R 视图，与提交版本不一致即失败（AI 资产进 CI）
       - run: java scripts/ExportArchitecture.java
       - run: git diff --exit-code docs/architecture

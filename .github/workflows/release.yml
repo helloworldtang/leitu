@@ -28,6 +28,18 @@ jobs:
         run: |
           sed -i "s#</mirrors>#</mirrors>\n  <servers>\n    <server>\n      <id>central</id>\n      <username>\${CENTRAL_USERNAME}</username>\n      <password>\${CENTRAL_PASSWORD}</password>\n    </server>\n  </servers>#" .mvn/settings.xml
           grep -A4 '<id>central</id>' .mvn/settings.xml
+      # 版本闸门（#23）：tag 必须与 pom 版本一致，且不得是 SNAPSHOT。
+      # 少了这道闸，① 打错 tag（v0.2.1 而 pom 还是 0.2.0）会把错误版本推上 Central，
+      # 而组件一旦发布就不可撤回、版本号也不可复用；② 把 SNAPSHOT 推上 Portal，校验会拒收。
+      # 校验脚本与本地自检共用同一份（scripts/check-release-version.sh），流程里不另抄一遍逻辑。
+      - name: 校验 tag 与 pom 版本一致（且非 SNAPSHOT）
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            scripts/check-release-version.sh "${GITHUB_REF#refs/tags/}"
+          else
+            echo "手动触发：跳过 tag 比对，只校验非 SNAPSHOT"
+            scripts/check-release-version.sh
+          fi
       # 发布集合：leitu-parent(pom) + 库模块（core / rules / 三能力 / 两适配 / starter）；examples 不发布
       - name: Publish to Maven Central
         env:

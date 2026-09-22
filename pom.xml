@@ -10,6 +10,29 @@
   <packaging>pom</packaging>
 
   <name>leitu</name>
+  <url>https://github.com/helloworldtang/leitu</url>
+
+  <!-- Central Portal 强制元数据：缺 <url>/<licenses>/<developers>/<scm> 四条，
+        Portal 的元数学校验会直接拒收（且往往在耐心在建-empty 之后才报） -->
+  <licenses>
+    <license>
+      <name>MIT License</name>
+      <url>https://opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>helloworldtang</id>
+      <name>唐成</name>
+      <url>https://github.com/helloworldtang</url>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:https://github.com/helloworldtang/leitu.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/helloworldtang/leitu.git</developerConnection>
+    <url>https://github.com/helloworldtang/leitu</url>
+  </scm>
   <description>累土——给人和 AI 的确定性后端地基：把反复出现、边界清楚的问题，沉淀成一套标准答案。</description>
 
   <modules>
@@ -73,6 +96,11 @@
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>cn.youhuale</groupId>
+        <artifactId>leitu-rules</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -232,6 +260,14 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+    <!-- eval 参考解：默认不在 reactor 里（它是被评 agent 的对照答案，不该拖慢每次 verify），
+         但必须由 CI 定期跑——它是"规则在下游真的有效"的唯一可执行证据，从未跑过的答案等于没有答案 -->
+    <profile>
+      <id>eval</id>
+      <modules>
+        <module>eval/reference/01-entity-crud-service</module>
+      </modules>
     </profile>
   </profiles>
 </project>
