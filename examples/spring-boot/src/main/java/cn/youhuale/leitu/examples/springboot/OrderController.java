@@ -36,8 +36,10 @@ public class OrderController {
     @Operation(operationId = "order.create", summary = "创建订单")
     @PostMapping
     public Order create(@RequestParam String id, @RequestParam long amountCents) {
+        // 传操作者全貌而非只传 subject 字符串：判定层因此看得见"匿名/人/系统/代理"，
+        // 未认证请求会被先验拒绝，而不是混在角色匹配里靠运气拦下。
         Decision decision = chain.check(AccessRequest.inbound(
-                who.current().operator().subject(), "order.create", "-"));
+                who.current().operator(), "order.create", "-"));
         if (decision.isDeny()) {
             throw FailureNoticeException.from(decision, who);
         }
