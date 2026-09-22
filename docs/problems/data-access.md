@@ -41,6 +41,9 @@ public final class DataStores {                     // api 工厂
 - **兜底**：内存实现（ConcurrentHashMap，键=（租户, 主键）），toString 自我声明「内存实现，重启即失——生产必换 adapter」
 - **插拔**：真库 = adapter 实现 DataStore（盖章算法复用 AuditFields.stampedBy / restampedBy）；列表行过滤/分页/查询语言属 adapter
 - **成套答案**：数据权限不造新类型——单资源判定=判定链 Guard（resource 携数据主键）；观测=opt-in 装饰器记 data.* 事件
+- **收口**：数据权限用 {@code DataStores.guarded(store, chain, "order", Order::id)} 包在存取缝上——
+  四种读写各自带判定动作（data:save / data:read / data:delete / data:list），资源名 = 域/主键，
+  否决即抛 AccessDeniedException（不降级为"空结果"）；空链 = deny-by-default
 
 ## 三、取舍
 
@@ -52,7 +55,9 @@ public final class DataStores {                     // api 工厂
 
 **为什么"-"不是全局通配**：系统级数据（定时任务落的行）若对所有租户可见，等于系统作用域变成后门；"-" 是一个普通作用域，只对 "-" 上下文可见。
 
-**为什么数据权限走判定链、不做行过滤**：单资源读写的判定判定链已经承担（AccessRequest.resource = 数据主键，数据权限就是一类 Guard）；列表行过滤是查询优化，依赖尚未存在的查询语言——翻译器属 adapter。
+**为什么数据权限走判定链、不做行过滤**：单资源读写的判定由判定链承担（AccessRequest.resource = 数据主键，数据权限就是一类 Guard）；列表行过滤是查询优化，依赖尚未存在的查询语言——翻译器属 adapter。
+
+**为什么判定要收口到存取缝而不是靠自觉**：手写 {@code if (d.isAllow()) store.save(...)} 漏判一次就是一次越权，而漏判编译得过、测试也过得去——"靠自觉"没有失败模式，机器守不住；包了装饰器则每次读写都判，没包就明说没包。否决抛异常而非返回空：把"没权限"伪装成"不存在"，排障时无从分辨。
 
 **为什么内存兜底而不是纯契约**：金样本/开发/测试要开箱即跑（三段交付）；对照观测维度的日志级默认——数据维度给最小可用实现，但必须大声标注边界（toString + 本页）。
 

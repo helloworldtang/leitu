@@ -8,7 +8,11 @@ import cn.youhuale.leitu.core.guard.model.Decision;
 import cn.youhuale.leitu.core.guard.model.Retry;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -51,6 +55,53 @@ class AccessGuardsTest {
         assertTrue(denied.isDeny());
         assertEquals(new Retry.Later(Duration.ofSeconds(30)), denied.retry());
         assertTrue(denied.reason().contains("ai-calls"), "否决理由必须点名是哪个预算：" + denied.reason());
+    }
+
+    /** 可拨时钟：窗口按它推进，测试不必真等一个窗口。 */
+    static final class TickingClock extends Clock {
+        private volatile Instant now;
+
+        TickingClock(Instant start) {
+            this.now = start;
+        }
+
+        void advance(Duration d) {
+            now = now.plus(d);
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            return this;
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
+    }
+
+    /**
+     * 反向自测：计数必须真的能回零。
+     * 若有人把窗口重置逻辑删掉（回到只增不减的 AtomicLong），最后一条断言立刻变红——
+     * 那时 Retry.later 就是一句空话：客户端照着"稍后重试"再来，服务端永久拒绝。
+     */
+    @Test
+    void 预算窗口耗尽后_跨过窗口即重置() {
+        TickingClock clock = new TickingClock(Instant.parse("2026-01-01T00:00:00Z"));
+        var budget = AccessGuards.budget("ai-calls", BudgetSpec.of(2, Duration.ofSeconds(30)), clock);
+        var req = AccessRequest.inbound("alice", "tool:search", "-");
+
+        assertTrue(budget.check(req).isAllow());
+        assertTrue(budget.check(req).isAllow());
+        assertTrue(budget.check(req).isDeny(), "窗口内第三次应被否决");
+
+        clock.advance(Duration.ofSeconds(31));
+        assertTrue(budget.check(req).isAllow(), "跨过窗口后计数回零——Retry.later 的承诺要能兑现");
     }
 
     @Test

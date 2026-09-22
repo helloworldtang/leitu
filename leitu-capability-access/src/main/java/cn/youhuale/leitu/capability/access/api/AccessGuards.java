@@ -5,6 +5,8 @@ import cn.youhuale.leitu.capability.access.model.RoleMap;
 import cn.youhuale.leitu.capability.access.spi.PermissionPolicy;
 import cn.youhuale.leitu.core.guard.spi.Guard;
 
+import java.time.Clock;
+
 /**
  * access 能力的工厂——从 api 取 Guard，不触碰 internal。
  *
@@ -28,5 +30,10 @@ public final class AccessGuards {
     /** 预算 Guard：窗口限次，耗尽后否决并携带重试语义。name 用于否决理由的可读性。 */
     public static Guard budget(String name, BudgetSpec spec) {
         return new cn.youhuale.leitu.capability.access.internal.BudgetGuard(name, spec);
+    }
+
+    /** 预算 Guard，可注入时钟（测试拨时钟即可断言窗口重置，不必真等一个窗口）。 */
+    public static Guard budget(String name, BudgetSpec spec, Clock clock) {
+        return new cn.youhuale.leitu.capability.access.internal.BudgetGuard(name, spec, clock);
     }
 }

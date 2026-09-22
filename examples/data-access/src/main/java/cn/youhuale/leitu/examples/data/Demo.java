@@ -6,12 +6,10 @@ import cn.youhuale.leitu.capability.data.api.DataStores;
 import cn.youhuale.leitu.capability.data.model.AuditFields;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
-import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
 import cn.youhuale.leitu.core.context.model.ExecutionContext;
 import cn.youhuale.leitu.core.context.model.Operator;
+import cn.youhuale.leitu.core.guard.api.AccessDeniedException;
 import cn.youhuale.leitu.core.guard.api.GuardChain;
-import cn.youhuale.leitu.core.guard.model.AccessRequest;
-import cn.youhuale.leitu.core.guard.model.Decision;
 import cn.youhuale.leitu.core.observe.api.ObservationRecorder;
 import cn.youhuale.leitu.core.observe.model.ObservationEvent;
 
@@ -28,7 +26,6 @@ public final class Demo {
 
     public static void main(String[] args) {
         var binder = ExecutionContextBinders.threadLocal();
-        ExecutionContextReader who = ExecutionContextReader.threadLocal();
         List<ObservationEvent> events = new ArrayList<>();
         ObservationRecorder recorder = events::add;
         DataStore<Order, String> orders = DataStores.observing(
@@ -61,28 +58,27 @@ public final class Demo {
             System.out.println("系统作用域: tenant-a 看系统行=" + orders.findById("order-sys").isPresent());
         }
 
-        // 4) 数据权限走判定链：bob 无 order:write → deny → 不落库；alice(admin) → 放行
+        // 4) 数据权限收口到存取缝：包上装饰器，四种读写各自带判定（data:save / read / delete / list）
+        //    ——不再手写 if (d.isAllow())，漏判在机制上不可能；否决即抛 AccessDeniedException，不静默跳过
         RoleMap roles = RoleMap.create()
                 .subject("alice").hasRoles("admin")
                 .subject("bob").hasRoles("member")
-                .action("order:write").allowsRoles("admin")
+                .action("data:save").allowsRoles("admin")
                 .build();
         GuardChain guard = GuardChain.of(AccessGuards.roleMap(roles));
+        DataStore<Order, String> guardedOrders = DataStores.guarded(orders, guard, "order", Order::id);
         try (var scope = binder.bind(ExecutionContext.of(Operator.human("bob", "tenant-a"), "t-6"))) {
-            Decision d = guard.check(AccessRequest.inbound(who.current().operator().subject(),
-                    "order:write", "order-77"));
-            System.out.println("判定:     bob 写 order-77 → " + d);
-            if (d.isAllow()) {
-                orders.save(Order.create("order-77", 100L));
+            try {
+                guardedOrders.save(Order.create("order-77", 100L));
+                System.out.println("判定:     bob 写 order-77 → 放行（不该发生）");
+            } catch (AccessDeniedException e) {
+                System.out.println("判定:     bob 写 order-77 → 否决：" + e.decision().reason());
             }
         }
         try (var scope = binder.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-7"))) {
-            Decision d = guard.check(AccessRequest.inbound(who.current().operator().subject(),
-                    "order:write", "order-77"));
-            System.out.println("判定:     alice 写 order-77 → " + d);
-            if (d.isAllow()) {
-                orders.save(Order.create("order-77", 100L));
-            }
+            guardedOrders.save(Order.create("order-77", 100L));
+            System.out.println("判定:     alice 写 order-77 → 放行，已落库="
+                    + orders.findById("order-77").isPresent());
         }
 
         // 5) 观察装饰：data.* 事件带完整锚点（谁 + traceId）

@@ -6,12 +6,10 @@ import cn.youhuale.leitu.capability.data.api.DataStores;
 import cn.youhuale.leitu.capability.data.model.AuditFields;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
-import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
 import cn.youhuale.leitu.core.context.model.ExecutionContext;
 import cn.youhuale.leitu.core.context.model.Operator;
+import cn.youhuale.leitu.core.guard.api.AccessDeniedException;
 import cn.youhuale.leitu.core.guard.api.GuardChain;
-import cn.youhuale.leitu.core.guard.model.AccessRequest;
-import cn.youhuale.leitu.core.guard.model.Decision;
 import cn.youhuale.leitu.core.observe.model.ObservationEvent;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +23,6 @@ class GoldenTest {
 
     private static final cn.youhuale.leitu.core.context.spi.ExecutionContextBinder BINDER =
             ExecutionContextBinders.threadLocal();
-    private final ExecutionContextReader who = ExecutionContextReader.threadLocal();
 
     @Test
     void 审计四件套自动盖章_alice建bob改() {
@@ -70,30 +67,31 @@ class GoldenTest {
         }
     }
 
+    /**
+     * 数据权限收口到存取缝：包了装饰器，四种读写各自带判定，漏判在机制上不可能。
+     *
+     * <p>此前金样本教的是手写 {@code if (d.isAllow()) orders.save(...)}——漏写一次判定就是一次越权，
+     * 而漏写编译得过、测试也过得去。现在判定在存取缝上，否决即抛，不靠自觉。
+     */
     @Test
-    void 数据权限走判定链_deny时不落库() {
+    void 数据权限收口到存取缝_否决即抛且不落库() {
         DataStore<Order, String> orders = DataStores.inMemory(Order::id);
         RoleMap roles = RoleMap.create()
                 .subject("alice").hasRoles("admin")
                 .subject("bob").hasRoles("member")
-                .action("order:write").allowsRoles("admin")
+                .action("data:save").allowsRoles("admin")
                 .build();
         GuardChain guard = GuardChain.of(AccessGuards.roleMap(roles));
+        DataStore<Order, String> guarded = DataStores.guarded(orders, guard, "order", Order::id);
         try (var scope = BINDER.bind(ExecutionContext.of(Operator.human("bob", "tenant-a"), "t-1"))) {
-            Decision d = guard.check(AccessRequest.inbound(
-                    who.current().operator().subject(), "order:write", "order-77"));
-            assertTrue(d.isDeny(), "member 不可写");
-            if (d.isAllow()) {
-                orders.save(Order.create("order-77", 100L));
-            }
-            assertTrue(orders.findById("order-77").isEmpty(), "deny 时存取器不落库（判定在存取之前）");
+            AccessDeniedException e = assertThrows(AccessDeniedException.class,
+                    () -> guarded.save(Order.create("order-77", 100L)));
+            assertTrue(e.getMessage().contains("data:save"), "否决要说清是哪个动作被拦：" + e.getMessage());
+            assertTrue(orders.findById("order-77").isEmpty(), "否决即拦下：底层一行都没写");
         }
         try (var scope = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-2"))) {
-            Decision d = guard.check(AccessRequest.inbound(
-                    who.current().operator().subject(), "order:write", "order-77"));
-            assertTrue(d.isAllow(), "admin 可写");
-            orders.save(Order.create("order-77", 100L));
-            assertTrue(orders.findById("order-77").isPresent());
+            guarded.save(Order.create("order-77", 100L));
+            assertTrue(orders.findById("order-77").isPresent(), "放行即落库");
         }
     }
 
