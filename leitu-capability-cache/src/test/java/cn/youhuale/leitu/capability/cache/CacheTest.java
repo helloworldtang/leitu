@@ -1,6 +1,7 @@
 package cn.youhuale.leitu.capability.cache;
 
 import cn.youhuale.leitu.capability.cache.api.Caches;
+import cn.youhuale.leitu.capability.cache.api.CyclicCacheLoadException;
 import cn.youhuale.leitu.capability.cache.model.CachePolicy;
 import cn.youhuale.leitu.capability.cache.spi.Cache;
 import cn.youhuale.leitu.core.config.api.ConfigReader;
@@ -11,6 +12,7 @@ import cn.youhuale.leitu.core.context.model.Operator;
 import cn.youhuale.leitu.core.observe.api.ObservationRecorder;
 import cn.youhuale.leitu.core.observe.model.ObservationEvent;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -21,7 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -159,7 +163,7 @@ class CacheTest {
         for (Thread thread : threads) {
             thread.join();
         }
-        assertEquals(1, loads.get(), "同键并发只装载一次（粗粒度互斥保证）");
+        assertEquals(1, loads.get(), "同键并发只装载一次（同键落同一分片，串行保证）");
     }
 
     @Test
@@ -191,7 +195,148 @@ class CacheTest {
         for (Thread thread : threads) {
             thread.join();
         }
-        assertEquals(1, loads.get(), "装饰器覆写 getOrLoad——原子装载留在 delegate 锁内，装饰不击穿");
+        assertEquals(1, loads.get(), "装饰器覆写 getOrLoad——装载编排留在 delegate，装饰不击穿");
+    }
+
+    /**
+     * 反向自测：装载器卡住时，同一缓存的其他键仍可读写淘汰。
+     *
+     * <p>若有人把装载器挪回 map 锁内（回到 {@code synchronized (map) { loader.apply(...) }}），
+     * 一次慢装载就阻塞本缓存所有键的一切操作——下面的 put/get/evict 会一起卡死，
+     * 主线程拿不到锁，测试超时变红。
+     *
+     * <p>挂 {@code @Timeout} 而不是靠"跑很久没结束"来发现：卡死要能变成红灯，而不是变成一次慢构建。
+     */
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void 慢装载不阻塞其他键的读写淘汰() throws InterruptedException {
+        Cache<String, String> cache = cache(10);
+        CountDownLatch inLoader = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        Thread slow = new Thread(() -> {
+            try (var s = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+                cache.getOrLoad("slow", k -> {
+                    inLoader.countDown();
+                    try {
+                        // 有界等待：即便主线程被卡住（旧实现），装载线程也会自己退出，
+                        // 让"卡死"表现为一次红灯而不是一次永远不结束的构建
+                        release.await(10, TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    return "v-slow";
+                }, Duration.ofMinutes(10));
+            }
+        });
+        slow.setDaemon(true);
+        slow.start();
+        assertTrue(inLoader.await(2, TimeUnit.SECONDS), "装载器已进入（否则测不到阻塞）");
+        try (var s = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-2"))) {
+            cache.put("other", "v-other", Duration.ofMinutes(10));
+            assertEquals(Optional.of("v-other"), cache.get("other"), "装载期他键可读");
+            assertTrue(cache.evict("other"), "装载期他键可淘汰");
+        }
+        release.countDown();
+        slow.join(5000);
+        assertFalse(slow.isAlive(), "放行后装载线程应正常结束");
+    }
+
+    /**
+     * 装载图成环（A 的装载器读 B、B 又读回 A 同一个键）——值依赖它自己，无解。
+     *
+     * <p>框架的态度：这不是"慢"，是<b>没有答案</b>，所以不等待、不超时、不静默重试，
+     * 而是把环路径报出来。若退回"装载器持锁运行"的旧结构，这里会变成无声挂死——
+     * 挂 {@code @Timeout} 是为了让那种退化变成红灯，而不是变成一次永远不结束的构建。
+     */
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void 装载图成环_大声报出环路径而不是挂死() {
+        Cache<String, String> users = cache(10);
+        Cache<String, String> orders = cache(10);
+        try (var s = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            CyclicCacheLoadException e = assertThrows(CyclicCacheLoadException.class, () ->
+                    users.getOrLoad("u-1",
+                            k -> orders.getOrLoad("o-1",
+                                    k2 -> users.getOrLoad("u-1", k3 -> "永远算不出来", Duration.ofMinutes(10)),
+                                    Duration.ofMinutes(10)),
+                            Duration.ofMinutes(10)));
+            assertTrue(e.cyclePath().contains("u-1"), "环路径要指认是哪个键：" + e.cyclePath());
+            assertTrue(e.getMessage().contains("无解"), "异常必须即教程：" + e.getMessage());
+            assertTrue(e.getMessage().contains("装载器"), "责任方要说清（在装载器里，不在缓存里）");
+        }
+    }
+
+    /**
+     * 双线程版的环：两台缓存各由一个线程装载，装载器互相读对方——经典的"锁序死锁"形态。
+     *
+     * <p>登记等待边与判环在同一把锁内完成，所以先到的一方判不出、后到的一方必判出；
+     * 两侧都不会无声挂死。这是环检测真正要保证的场景（单线程那条只覆盖自环）。
+     */
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void 两线程互等_环检测解开_不挂死() throws InterruptedException {
+        Cache<String, String> users = cache(10);
+        Cache<String, String> orders = cache(10);
+        CountDownLatch inUsers = new CountDownLatch(1);
+        CountDownLatch inOrders = new CountDownLatch(1);
+        AtomicReference<Throwable> errUsers = new AtomicReference<>();
+        AtomicReference<Throwable> errOrders = new AtomicReference<>();
+
+        Thread tu = new Thread(() -> {
+            try (var s = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+                users.getOrLoad("k", k -> {
+                    inUsers.countDown();
+                    awaitQuietly(inOrders);              // 两边都进了装载器，才构成互等
+                    return orders.getOrLoad("k", k2 -> "v-orders", Duration.ofMinutes(10));
+                }, Duration.ofMinutes(10));
+            } catch (Throwable t) {
+                errUsers.set(t);
+            }
+        });
+        Thread to = new Thread(() -> {
+            try (var s = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-2"))) {
+                orders.getOrLoad("k", k -> {
+                    inOrders.countDown();
+                    awaitQuietly(inUsers);
+                    return users.getOrLoad("k", k2 -> "v-users", Duration.ofMinutes(10));
+                }, Duration.ofMinutes(10));
+            } catch (Throwable t) {
+                errOrders.set(t);
+            }
+        });
+        tu.setDaemon(true);
+        to.setDaemon(true);
+        tu.start();
+        to.start();
+        // 有界 join（两侧各 3s < @Timeout 10s）：真挂死时先由这条断言报红并给出可读理由，
+        // 而不是等到超时——红灯要指认死因，不只是"跑太久"
+        tu.join(3000);
+        to.join(3000);
+        assertFalse(tu.isAlive() || to.isAlive(), "成环不允许无声挂死：两个线程都必须结束");
+        Throwable failure = errUsers.get() != null ? errUsers.get() : errOrders.get();
+        assertTrue(failure instanceof CyclicCacheLoadException,
+                "至少一个线程必须报出环（另一个拿到同一异常）：" + failure);
+    }
+
+    private static void awaitQuietly(CountDownLatch latch) {
+        try {
+            latch.await(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** 装载器抛异常：锁必须释放（finally），否则同键从此永久卡死。 */
+    @Test
+    void 装载器抛异常_锁释放_同键可再装载() {
+        Cache<String, String> cache = cache(10);
+        try (var s = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            assertThrows(IllegalStateException.class, () -> cache.getOrLoad("k", k -> {
+                throw new IllegalStateException("装载失败");
+            }, Duration.ofMinutes(10)));
+            assertEquals("v", cache.getOrLoad("k", k -> "v", Duration.ofMinutes(10)),
+                    "异常后锁已释放，同键可再次装载");
+        }
     }
 
     @Test

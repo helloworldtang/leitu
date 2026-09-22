@@ -10,13 +10,27 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-/** 进程内默认实现：TTL 惰性过期 + LRU 上限 + 租户作用域键 + 同键并发只装载一次。外部经 {@code Caches.inMemory(...)} 获取，不直接实例化。 */
+/**
+ * 进程内默认实现——<b>只负责存储</b>：TTL 惰性过期 + LRU 上限 + 租户作用域键。
+ * 外部经 {@code Caches.inMemory(...)} 获取，不直接实例化。
+ *
+ * <h3>角色边界（本类只占第一个）</h3>
+ * <ol>
+ *   <li><b>存储</b>＝本类：查表、回写、过期、淘汰。<b>不调用装载器，不持有跨用户代码的锁。</b></li>
+ *   <li><b>装载编排</b>＝{@link LoadLedger}：同键只装载一次、在途凭证、环侦测。</li>
+ *   <li><b>装载器</b>＝调用方传入的 {@code Function}：生产值，可自由读库 / 调下游 / 读别的缓存。</li>
+ * </ol>
+ *
+ * <p>为什么必须拆开：编排若用「持有一把锁」表达，锁就必然横跨装载器执行的整段时间，
+ * 装载器因此被夹进存储的临界区——一次慢装载冻结整个缓存，两个缓存互相装载则锁序成环。
+ * 那是角色没拆、不是锁太粗：存储不该调用用户代码。
+ */
 public final class InMemoryCache<K, V> implements Cache<K, V> {
 
-    private record ScopedKey(String tenant, Object key) {
-    }
+    private static final AtomicInteger SEQ = new AtomicInteger();
 
     private record CachedEntry<V>(V value, Instant expiresAt) {
     }
@@ -26,6 +40,11 @@ public final class InMemoryCache<K, V> implements Cache<K, V> {
     private final ExecutionContextReader reader;
 
     private final Clock clock;
+
+    /** 环路径里指认"哪台缓存"用的标签（跨实例可区分）。 */
+    private final String cacheLabel = "Cache#" + SEQ.incrementAndGet();
+
+    private final LoadLedger<V> ledger = new LoadLedger<>(cacheLabel);
 
     private final LinkedHashMap<ScopedKey, CachedEntry<V>> map = new LinkedHashMap<>(16, 0.75f, true) {
         @Override
@@ -79,28 +98,43 @@ public final class InMemoryCache<K, V> implements Cache<K, V> {
     }
 
     /**
-     * 装载三段式的原子版：与 get/put 同一把锁，同键并发只装载一次（防击穿）。
-     * 粗粒度互斥——装载期间阻塞本缓存一切操作，正确性优先（见问题页边界；高并发装载出路是 adapter 或 lock 能力）。
-     * 装载失败不缓存不吞——异常原样上抛。
+     * 装载三段式：命中即返；未命中交给 {@link LoadLedger} 编排——同键只有一个线程真正装载，其余等在途凭证上。
+     *
+     * <p><b>装载器不在任何缓存锁内执行</b>：锁只保护「查表 / 回写」这一瞬，永不跨过用户代码。
+     * 因此装载期本缓存的读、写、淘汰全部照常，装载器读别的缓存也不构成锁序环。
+     *
+     * <p>装载失败不缓存不吞——异常原样上抛（跟随者拿到的是同一个异常实例）。
+     * 装载器返回 null 是编程错误；装载图成环不是挂死而是 {@code CyclicCacheLoadException}（见 {@link LoadLedger}）。
      */
     @Override
     public V getOrLoad(K key, Function<K, V> loader, Duration ttl) {
         Objects.requireNonNull(key, "key 必填：缺失语义是 Optional.empty()，不是 null 入参");
         Objects.requireNonNull(loader, "loader 必填：只读不装就改用 get(...)");
         Cache.requirePositiveTtl(ttl);
+        ScopedKey scoped = scoped(key);
+        return ledger.load(scoped,
+                () -> peek(scoped),
+                () -> Objects.requireNonNull(loader.apply(key),
+                        "装载器不能返回 null：缓存不存 null 值——\"无值\"语义请不缓存（每次装载）"),
+                loaded -> {
+                    synchronized (map) {
+                        map.put(scoped, new CachedEntry(loaded, clock.instant().plus(ttl)));
+                    }
+                });
+    }
+
+    /** 命中返回值，未命中或已过期返回 null（过期条目惰性清除）。只在 map 锁内跑，不调用用户代码。 */
+    private V peek(ScopedKey scoped) {
         synchronized (map) {
-            ScopedKey scoped = scoped(key);
             CachedEntry<V> entry = map.get(scoped);
-            if (entry != null && !expired(entry)) {
-                return entry.value();
+            if (entry == null) {
+                return null;
             }
-            if (entry != null) {
-                map.remove(scoped);         // 过期条目惰性清除
+            if (expired(entry)) {
+                map.remove(scoped);
+                return null;
             }
-            V loaded = Objects.requireNonNull(loader.apply(key),
-                    "装载器不能返回 null：缓存不存 null 值——\"无值\"语义请不缓存（每次装载）");
-            map.put(scoped, new CachedEntry(loaded, clock.instant().plus(ttl)));
-            return loaded;
+            return entry.value();
         }
     }
 

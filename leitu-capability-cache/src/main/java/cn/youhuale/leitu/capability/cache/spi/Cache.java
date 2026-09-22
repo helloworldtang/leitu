@@ -18,6 +18,12 @@ import java.util.function.Function;
  *       <b>不承诺原子</b>；进程内默认实现覆写为同键并发只装载一次；
  *       分布式实现（Redis adapter）不承诺装载原子——跨进程互斥是 lock 能力的事
  *       （catalog 条目 lock）。</li>
+ *   <li><b>装载器不被锁包裹</b>：实现必须让装载器<b>不在任何缓存锁内执行</b>——
+ *       装载期本缓存的读 / 写 / 淘汰照常可用，装载器读别的缓存不构成锁序环。
+ *       这是角色边界（存储不调用用户代码），不是性能优化。</li>
+ *   <li><b>装载图成环大声失败</b>：若某个装载器直接或间接地读回它自己正在装载的键，
+ *       求值图无解（值依赖自身）——实现应侦测并抛
+ *       {@code CyclicCacheLoadException} 带环路径，<b>不允许无声挂死</b>。</li>
  *   <li><b>null 语义</b>：键 / 值 / TTL / 装载器不收 null（教学异常）；缓存不存 null 值
  *       ——"无值"语义请不缓存（每次装载）。</li>
  * </ol>
@@ -39,6 +45,8 @@ public interface Cache<K, V> {
     /**
      * 装载三段式收编：get→未命中→装载→put。默认实现为组合、不承诺原子；
      * 进程内实现覆写为同键并发只装载一次（防击穿）。装载器抛异常则原样上抛，不缓存不吞。
+     *
+     * <p>装载器不在缓存锁内执行；装载图成环（值依赖自身）抛 {@code CyclicCacheLoadException}，不挂死。
      */
     default V getOrLoad(K key, Function<K, V> loader, Duration ttl) {
         Objects.requireNonNull(key, "key 必填：缺失语义是 Optional.empty()，不是 null 入参");

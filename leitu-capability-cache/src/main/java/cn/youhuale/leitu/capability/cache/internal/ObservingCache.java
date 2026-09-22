@@ -53,7 +53,7 @@ public final class ObservingCache<K, V> implements Cache<K, V> {
 
     /**
      * 覆写（关键）：先经本装饰 get（发 hit/miss）→ 命中即返；未命中则 delegate.getOrLoad——
-     * 原子装载留在 delegate 锁内，装饰不击穿「同键只装载一次」承诺；随后记 cache.put（duration≈装载耗时）。
+     * 装载编排留在 delegate（在途凭证），装饰不击穿「同键只装载一次」承诺；随后记 cache.put（duration≈装载耗时）。
      * 注：miss 与 put 之间的竞态窗口内，miss 事件可能对应"他线程已装载"——事件是事实近似，装载原子性不受影响。
      */
     @Override
