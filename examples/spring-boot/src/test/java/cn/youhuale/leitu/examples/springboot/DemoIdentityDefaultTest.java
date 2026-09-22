@@ -32,7 +32,7 @@ class DemoIdentityDefaultTest {
                         .header("X-Demo-User", "alice").header("X-Demo-Tenant", "tenant-a"))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(jsonPath("$.type").value("guard.denied"))
+                .andExpect(jsonPath("$.type").value("urn:leitu:problem:guard.denied"))
                 .andExpect(jsonPath("$.detail").value(containsString("匿名")));
     }
 

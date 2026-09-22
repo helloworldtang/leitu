@@ -5,6 +5,7 @@ import cn.youhuale.leitu.core.failure.model.Kind;
 import cn.youhuale.leitu.core.guard.model.Retry;
 import org.springframework.http.HttpHeaders;
 
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -52,9 +53,34 @@ final class ProblemJson {
         }
     }
 
+    /**
+     * 内部 type（点分机读标识）→ RFC 9457 的 {@code type} 成员：必须是 URI，这里 URN 化
+     * （{@code urn:leitu:problem:order.not-found}）——见 ADR-011「type 可 URN 化」。
+     *
+     * <p><b>为什么不直接吐点分字符串</b>：RFC 9457 §4.2.1 规定 type 是 URI 引用。
+     * "order.not-found" 作为相对引用会被解析成"当前站点根下的 order.not-found 路径"——
+     * 消费方拿它去比对尚可，一旦按 URI 去抓取（抓文档是常见做法）就会跑到错的地址。
+     * URN 明确表述"这是个名字，不是地址"：不承诺 dereference 会得到什么，
+     * 也不因部署路径变化而改变——同一个失败在生产与预发环境是同一个 type。
+     *
+     * <p>末段就是机读标识本身，比对时取 {@code type.substring(type.lastIndexOf(':') + 1)} 即可。
+     */
+    static final String TYPE_URN_PREFIX = "urn:leitu:problem:";
+
+    static String typeUriOf(FailureNotice notice) {
+        String urn = TYPE_URN_PREFIX + notice.type();
+        try {
+            URI.create(urn);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("type 投影出的 URI 非法（type=\"" + notice.type()
+                    + "\"）：URI 安全字符集由 FailureNotice 构造期保证，走到这里说明校验被绕过了", e);
+        }
+        return urn;
+    }
+
     static Map<String, Object> bodyOf(FailureNotice notice, int status) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("type", notice.type());
+        body.put("type", typeUriOf(notice));
         body.put("title", notice.title());
         body.put("status", status);
         body.put("detail", notice.detail());

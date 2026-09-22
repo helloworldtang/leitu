@@ -69,7 +69,7 @@ class SmokeTest {
         mvc.perform(get("/orders/o-2")
                         .header("X-Demo-User", "mallory").header("X-Demo-Tenant", "tenant-b"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("order.not-found"));
+                .andExpect(jsonPath("$.type").value("urn:leitu:problem:order.not-found"));
     }
 
     @Test
@@ -78,7 +78,7 @@ class SmokeTest {
                         .header("X-Demo-User", "bob").header("X-Demo-Tenant", "tenant-a"))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(jsonPath("$.type").value("guard.denied"))
+                .andExpect(jsonPath("$.type").value("urn:leitu:problem:guard.denied"))
                 .andExpect(header().exists("X-Trace-Id"));
     }
 

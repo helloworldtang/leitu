@@ -95,7 +95,7 @@ class FailureAdviceTest {
         mvc().perform(get("/business"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(jsonPath("$.type").value("order.not-found"))
+                .andExpect(jsonPath("$.type").value("urn:leitu:problem:order.not-found"))
                 .andExpect(jsonPath("$.title").value("订单不存在"))
                 .andExpect(jsonPath("$.detail").value("订单 ord-9527 不存在或已删除；请确认订单号后重试"))
                 .andExpect(jsonPath("$.status").value(400))
@@ -110,7 +110,7 @@ class FailureAdviceTest {
                 ExecutionContext.of(Operator.human("alice", "tenant-a"), "trace-deny"))) {
             mvc().perform(get("/denied"))
                     .andExpect(status().isForbidden())
-                    .andExpect(jsonPath("$.type").value("guard.denied"))
+                    .andExpect(jsonPath("$.type").value("urn:leitu:problem:guard.denied"))
                     .andExpect(jsonPath("$.retry.mode").value("later"))
                     .andExpect(jsonPath("$.retry.afterSeconds").value(30))
                     .andExpect(header().string("Retry-After", "30"))
@@ -129,7 +129,7 @@ class FailureAdviceTest {
             mvc().perform(get("/data-denied"))
                     .andExpect(status().isForbidden())
                     .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                    .andExpect(jsonPath("$.type").value("guard.denied"))
+                    .andExpect(jsonPath("$.type").value("urn:leitu:problem:guard.denied"))
                     .andExpect(jsonPath("$.detail").value("无权写 note/n-1"))
                     .andExpect(jsonPath("$.retry.mode").value("never"))
                     .andExpect(header().string("X-Trace-Id", "trace-guard"));
@@ -143,7 +143,7 @@ class FailureAdviceTest {
             mvc().perform(get("/boom"))
                     .andExpect(status().isInternalServerError())
                     .andExpect(jsonPath("$.kind").value("SYSTEM"))
-                    .andExpect(jsonPath("$.type").value(FailureNotice.SYSTEM_TYPE))
+                    .andExpect(jsonPath("$.type").value("urn:leitu:problem:" + FailureNotice.SYSTEM_TYPE))
                     .andExpect(jsonPath("$.detail").value(FailureNotice.SYSTEM_DETAIL))
                     .andExpect(jsonPath("$.traceId").value("trace-sys"));
         }
@@ -166,7 +166,7 @@ class FailureAdviceTest {
         mvc().perform(get("/bad-status"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(jsonPath("$.type").value("order.bad-status"))
+                .andExpect(jsonPath("$.type").value("urn:leitu:problem:order.bad-status"))
                 .andExpect(header().string("X-Trace-Id", "trace-bad"));
     }
 

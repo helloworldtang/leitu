@@ -36,7 +36,8 @@ public final class FailureNotices {                // 工厂（model 静态方�
 - **形状**：三个子问题逐一落位——分类=Kind 二分、结构=七组件、否决对齐=fromDecision 复用 Retry
 - **兜底**：工厂即安全默认——business 全量；fromThrowable 脱敏（异常消息与类名不出端，全量细节走观测通道）
 - **对齐**：fromDecision 保留理由与重试语义；allow 进来=装配错误大声失败
-- **成套答案**：HTTP problem+json（RFC 9457）投影属 adapter，待建——kind→4xx/5xx、type 可 URN 化、retry/traceId/attributes→扩展成员、status/instance 由传输层补；消息队列 / RPC / CLI 同一本体各自投影
+- **成套答案**：HTTP problem+json（RFC 9457）投影已在 adapter-web 落地——kind→4xx/5xx、**type URN 化**（`urn:leitu:problem:<点分机读标识>`，见下）、retry/traceId/attributes→扩展成员、status/instance 由传输层补；消息队列 / RPC / CLI 同一本体各自投影
+- **为什么 type 必须 URN 化**：RFC 9457 §4.2.1 规定 type 是 URI 引用；裸点分字符串 `order.not-found` 会被当成相对路径解析到当前站点下，消费方按 URI 去拉文档时跑到错的地址。URN 说的是「这是个名字，不是地址」——不承诺解引用结果，也不随部署路径变化；为此 core 侧把 type 字符集收口到 `[A-Za-z0-9]+([._-][A-Za-z0-9]+)*`，构造期即校验
 
 ## 三、取舍
 
@@ -56,7 +57,7 @@ public final class FailureNotices {                // 工厂（model 静态方�
 
 ## 四、边界
 
-- adapter 投影（problem+json / Spring ProblemDetail 绑定）待建；core 不绑定任何传输
+- adapter-web 的 problem+json 投影已交付（type/title/detail/status + kind/retry/traceId/attributes）；Spring ProblemDetail 绑定未做，core 不绑定任何传输
 - core 不承诺错误码注册中心与 i18n 文案（type 是标识不是码表；默认中文文案由宿主/adapter 覆盖）
 - 参数验证是另一道题（input-validation：验证失败用 BUSINESS 交代，但"在哪验、验什么"不在本答案）
 - 记录与交代分离：fromThrowable 不产生观测事件——记录是 what-happened 的答案，两通道相邻不合并

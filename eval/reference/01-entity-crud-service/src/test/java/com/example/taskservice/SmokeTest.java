@@ -61,7 +61,7 @@ class SmokeTest {
                         .header("X-Probe-User", "dev").header("X-Probe-Tenant", "tenant-a"))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-                .andExpect(jsonPath("$.type").value("guard.denied"))
+                .andExpect(jsonPath("$.type").value("urn:leitu:problem:guard.denied"))
                 .andExpect(header().exists("X-Trace-Id"));
     }
 
@@ -73,7 +73,7 @@ class SmokeTest {
         mvc.perform(get("/tasks/t-3")
                         .header("X-Probe-User", "mallory").header("X-Probe-Tenant", "tenant-b"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.type").value("task.not-found"));
+                .andExpect(jsonPath("$.type").value("urn:leitu:problem:task.not-found"));
     }
 
     @Test
