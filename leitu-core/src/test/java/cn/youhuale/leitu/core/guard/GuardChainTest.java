@@ -96,6 +96,53 @@ class GuardChainTest {
         assertNull(AccessRequest.inbound("alice", "order:cancel", "order-42").operator());
     }
 
+    /**
+     * 反向自测（#16）：判定要看租户，前提是请求带得动租户。
+     *
+     * <p>旧形态只有 subject 字符串：判定层看不见租户，于是"这个资源是不是本租户的"没法回答，
+     * 实际效果是默认放行跨租户访问（同名 subject 在另一个租户里是另一个人）。
+     * 这里用一条只认 tenant-a 的 Guard 演示：tenant-b 的 alice 必须被拒，
+     * 且拒绝理由要说出双方租户——"彼此都叫 alice"不该成为越权的理由。
+     */
+    @Test
+    void Guard按租户判定_同名异租户即否决() {
+        // 资源约定：order-42 属 tenant-a（业务侧的元数据，此处写死只为演示判定缝的用法）
+        var chain = GuardChain.of(request -> request.tenant()
+                .filter("tenant-a"::equals)
+                .map(t -> Decision.allow())
+                .orElseGet(() -> Decision.deny("跨租户访问被拒：资源 order-42 属 tenant-a，"
+                        + "本请求租户=" + request.tenant().orElse("未知（请求未携带操作者全貌）"))));
+
+        AccessRequest sameTenant =
+                AccessRequest.inbound(Operator.human("alice", "tenant-a"), "order:cancel", "order-42");
+        AccessRequest otherTenant =
+                AccessRequest.inbound(Operator.human("alice", "tenant-b"), "order:cancel", "order-42");
+
+        assertTrue(chain.check(sameTenant).isAllow(), "同租户放行");
+        Decision denied = chain.check(otherTenant);
+        assertTrue(denied.isDeny(), "同名不同租户必须否决");
+        assertTrue(denied.reason().contains("tenant-b"), "拒绝理由要说清双方租户：" + denied.reason());
+    }
+
+    @Test
+    void 未携带操作者时租户不可见_判定层据此否定归属() {
+        assertTrue(AccessRequest.inbound(Operator.human("alice", "tenant-a"), "order:cancel", "order-42")
+                .tenant().isPresent(), "带全貌则租户可得");
+        assertTrue(AccessRequest.inbound("alice", "order:cancel", "order-42").tenant().isEmpty(),
+                "只有 subject 时租户为空——看不见租户不等于所有租户，判定层应当按无法归属处理");
+    }
+
+    /** {@code allow()} 的真正语义是"本 Guard 不否决"：一条 allow 撑不起放行，链条说了算。 */
+    @Test
+    void 单个Guard的allow不等于授权_另一条否决即否决() {
+        Decision d = GuardChain.of(
+                req -> Decision.allow(),
+                req -> Decision.deny("频率超限", Retry.later(Duration.ofSeconds(30)))
+        ).check(REQ);
+        assertTrue(d.isDeny(), "写过 allow 的那条 Guard 并不承担放行责任");
+        assertEquals("频率超限", d.reason());
+    }
+
     @Test
     void 出站与入口同一协议() {
         AccessRequest out = AccessRequest.outbound("svc-order", "call:inventory", "inventory-svc");

@@ -18,7 +18,14 @@ public record Decision(Verdict verdict, String reason, Retry retry) {
         }
     }
 
-    /** 允许。 */
+    /**
+     * 不反对。
+     *
+     * <p><b>注意语义</b>：在判定链里，单个 Guard 返回 allow 是"我不否决"，<b>不是"我授权"</b>——
+     * 最终结论由链条决定：任一 Guard 否决即否决，空链则 deny-by-default（见 DefaultGuardChain）。
+     * 把它读成"允许"会得到错误的安全感：写了 allow 的 Guard 并不承担放行责任，
+     * 责任在整条链；反之，想让某类请求通过，要的是"没有任何一条 Guard 否决"。
+     */
     public static Decision allow() {
         return new Decision(Verdict.ALLOW, "允许", Retry.never());
     }

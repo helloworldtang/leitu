@@ -3,6 +3,7 @@ package cn.youhuale.leitu.core.guard.model;
 import cn.youhuale.leitu.core.context.model.Operator;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * 一次待判定的访问或调用。
@@ -64,5 +65,18 @@ public record AccessRequest(String subject, String action, String resource, Dire
      */
     public boolean anonymous() {
         return operator != null && operator.isAnonymous();
+    }
+
+    /**
+     * 本次调用所属的租户—— 判定层据此回答"这个资源是不是本租户的"。
+     *
+     * <p>租户是隔离的第一维度：只看 subject 不看租户的判定，等于默认放行跨租户访问
+     * （同名的 subject 在另一个租户里是另一个人）。
+     *
+     * <p>未携带 operator 时返回 {@code Optional.empty()}：<b>看不见租户不等于所有租户</b>——
+     * 判定层遇到 empty 应当按"无法确认归属"处理（通常就是否决），不得当作跨租户通行证。
+     */
+    public Optional<String> tenant() {
+        return Optional.ofNullable(operator).map(Operator::tenant);
     }
 }

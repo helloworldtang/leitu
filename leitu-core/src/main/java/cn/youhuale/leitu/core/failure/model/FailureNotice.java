@@ -7,6 +7,7 @@ import cn.youhuale.leitu.core.guard.model.Retry;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.regex.Pattern;
 
 /**
  * 失败的交代结构——传输无关本体（HTTP problem+json 是 adapter 侧投影，见 ADR-011）。
@@ -23,6 +24,9 @@ public record FailureNotice(Kind kind, String type, String title, String detail,
     public static final String SYSTEM_DETAIL = "系统暂时无法完成请求，请稍后重试；可凭 traceId 联系支持查证";
     public static final String GUARD_TYPE = "guard.denied";
 
+    /** type 会被投影为 URI（RFC 9457 的 type 成员），字符集因此必须 URI 安全。 */
+    private static final Pattern URI_SAFE = Pattern.compile("[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*");
+
     public FailureNotice {
         Objects.requireNonNull(kind,
                 "kind 必填：先分类再交代——BUSINESS=调用方的错（全量交代），SYSTEM=我们的错（脱敏交代）");
@@ -33,6 +37,14 @@ public record FailureNotice(Kind kind, String type, String title, String detail,
         if (type.indexOf('.') < 1) {
             throw new IllegalArgumentException("type 必须点分命名（如 \"order.not-found\"、\"system.unexpected\"）："
                     + "左侧是域、右侧是事实，交代可聚可查。当前：" + type);
+        }
+        // RFC 9457 的 type 是 URI：这里是它的末段，因此字符集必须在构造期就收口。
+        // 空格、斜杠、冒号、问号一旦进来，web 侧拼出的 URI 会非法——而那时离写错的地方隔着整个调用链。
+        if (!URI_SAFE.matcher(type).matches()) {
+            throw new IllegalArgumentException("type 只能由字母数字与 . _ - 组成（且以字母数字开头结尾）：当前 \""
+                    + type + "\"；它会被投影成 problem+json 的 type URI（RFC 9457），"
+                    + "含空格 / 斜杠 / 冒号 / 问号一类字符会拼出非法 URI——"
+                    + "正确示例：\"order.not-found\"、\"system.unexpected\"");
         }
         Objects.requireNonNull(title, "title 必填：给调用方看的稳定短句（错误即教程）");
         if (title.isBlank()) {

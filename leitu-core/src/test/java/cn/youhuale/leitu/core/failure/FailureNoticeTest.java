@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,6 +19,19 @@ import static org.junit.jupiter.api.Assertions.*;
 class FailureNoticeTest {
 
     private final ExecutionContext ctx = ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1");
+
+    @Test
+    void type含URI不安全字符_构造期即失败() {
+        // RFC 9457 的 type 会被投影成 URI：空格 / 斜杠 / 冒号一类字符拼出来的 URI 非法，
+        // 而错误发生在投影那一刻，离写错的地方隔着整条调用链——字符集必须在构造期收口
+        ExecutionContext ctx = ExecutionContext.of(Operator.system(), "trace-1");
+        for (String bad : List.of("order not.found", "order/not.found", "order:not.found", "order.not-found?")) {
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                    () -> FailureNotice.business(bad, "标题", "详情", ctx),
+                    "type=" + bad + " 必须被拒");
+            assertTrue(e.getMessage().contains("字母数字"), e.getMessage());
+        }
+    }
 
     @Test
     void type必须点分命名_构造即校验并教修复方式() {
