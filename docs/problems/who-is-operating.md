@@ -16,12 +16,12 @@ ExecutionContextReader who = ExecutionContextReader.threadLocal();  // 注入使
 
 who.current().operator().subject();   // 谁
 who.current().operator().tenant();    // 代表谁（无租户语义 "-"）
-who.current().operator().kind();      // HUMAN / SYSTEM / AGENT——AI 代理是一等操作者
+who.current().operator().kind();      // HUMAN / SYSTEM / AGENT / ANONYMOUS——AI 代理是一等操作者，匿名是独立类型（不是 HUMAN 的取值）
 who.current().traceId();              // 这次调用链的锚点
 ```
 
 - **绑定是宿主/入口的事**（`ExecutionContextBinder` SPI，try-with-resources 作用域，退出自动还原不泄漏）；**业务只读**（`ExecutionContextReader` 端口，最小权限）
-- **兜底**：未绑定读到匿名上下文（`subject=anonymous` + 自动生成的 traceId），永不抛异常——匿名者过判定链会被权限类 Guard 拦下，纵深成立
+- **兜底**：未绑定读到匿名上下文（`subject=anonymous`、kind=ANONYMOUS + 自动生成的 traceId），永不抛异常——匿名在判定链处被**先验拒绝**（进任何 Guard 之前），纵深成立
 - **默认实现**：线程级绑定（`threadLocal()`）；测试可注入任意 fake binder
 - **成套答案**：身份源对接、操作者富模型（`leitu-capability-identity`，待建）
 
@@ -31,7 +31,11 @@ who.current().traceId();              // 这次调用链的锚点
 
 **为什么 kind（HUMAN/SYSTEM/AGENT）进 core**：AI 代理与真人同场操作是这个时代的既成事实；判定（agent 权限策略不同）和观测（区分人/代理行为）都需要它。现在加是三行代码，将来加是全量数据迁移。
 
-**为什么兜底是"匿名"而不是抛异常**：上下文缺席不是错误状态（健康检查、启动任务没有"操作者"），抛异常会把管道其他答案拖垮；而匿名身份在判定链处自然被拦，安全不裸奔。
+**为什么兜底是"匿名"而不是抛异常**：上下文缺席不是错误状态（健康检查、启动任务没有"操作者"），抛异常会把管道其他答案拖垮；而匿名身份在判定链处被先验拒绝，安全不裸奔。
+
+**为什么匿名是独立类型而不是 HUMAN 的一个取值**：匿名是"还没认证"这个状态，不是一种人。标成 HUMAN 时它会走进角色匹配——只要某处给 `anonymous` 配了角色（或自定义 Guard 里写 `!"alice".equals(subject) ? deny : allow` 恰好没拦住），未认证请求就拿到人的权限，而配置表面毫无异常。独立成 ANONYMOUS 后，判定链可以在交给任何 Guard 之前先验拒绝它。
+
+**为什么请求头不是身份来源**：请求头是调用方完全可控的输入——任何人都能发 `X-User: admin`。把"从请求头取身份"写进生产，等于把认证交给调用方自己填，这不是简化，是把门禁拆了。身份只能来自认证体系（会话、令牌校验、网关注入的已认证主体）；`examples/spring-boot` 里的请求头解析仅供演示跑通，默认关闭（未开启时一律匿名，而匿名过不了判定）。
 
 **被拒绝的备选**：纯参数透传（侵入所有签名）/ 静态全局 holder 无作用域（泄漏与还原失控）/ 只给 ThreadLocal 不给 SPI（宿主无法换绑定点，如虚拟线程/消息驱动场景）。
 

@@ -18,6 +18,8 @@ public final class RoleMapGuard implements PermissionPolicy {
 
     @Override
     public Decision check(AccessRequest request) {
+        // 匿名不由本 Guard 处理：判定链在交给任何 Guard 之前就已先验拒绝匿名
+        // （见 DefaultGuardChain）——放在链条上才能覆盖用户自己写的 Guard。
         var required = map.rolesRequiredBy(request.action());
         if (required.isEmpty()) {
             return Decision.deny("动作 " + request.action() + " 未配置任何放行规则——按安全默认拒绝。"

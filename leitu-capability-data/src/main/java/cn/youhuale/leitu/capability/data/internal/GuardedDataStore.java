@@ -92,8 +92,10 @@ public final class GuardedDataStore<T extends Auditable, ID> implements DataStor
      * 排障时只能靠猜。两者语义不同，出口就必须不同。
      */
     private void check(String action, String resource) {
+        // 带操作者全貌（含类型与租户）而非只带 subject 字符串：
+        // 判定层因此看得见"匿名"，不靠比对字面量去猜——见 AccessRequest.anonymous()。
         Decision decision = chain.check(AccessRequest.inbound(
-                reader.current().operator().subject(), action, resource));
+                reader.current().operator(), action, resource));
         if (decision.isDeny()) {
             throw AccessDeniedException.from(decision, reader);
         }

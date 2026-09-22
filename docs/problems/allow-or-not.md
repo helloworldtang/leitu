@@ -49,6 +49,10 @@ public record Decision(Verdict verdict, String reason, Retry retry) {
 
 **为什么 deny-by-default**：安全维度的 Noop = 默认放行 = 反模式。
 
+**为什么匿名先验放在判定链上而不是各个 Guard 里**：授权的前提是识别——"未识别的调用方有没有某个权限"这个问法本身不成立。若把这条留给每个 Guard 自行判断，用户自己写的 Guard（例如 `!"alice".equals(subject) ? deny : allow`）就会按 subject 字符串把匿名当普通主体处理，配什么角色就给什么权限。收口在链条上：进任何 Guard 之前先验拒绝匿名，一次覆盖全部 Guard。
+
+**为什么 AccessRequest 要带 Operator 而不只带 subject**：只带字符串时判定层看不见调用方类型，"匿名"只能靠比对字面量 `anonymous` 去猜——猜漏一次就是未认证流量拿到人的权限。带上全貌后类型与租户都对判定层可见（`AccessRequest.inbound(operator, ...)`）；只给 subject 的旧构造保留，此时不替判定层猜。
+
 **被拒绝的备选**：独立权限中间件（拆散管道时刻，多一跳部署）；注解式声明（隐式魔法约定——每个约定必须能指着测试说"违反它会被谁抓住"，见 AGENTS.md）。
 
 ## 四、边界

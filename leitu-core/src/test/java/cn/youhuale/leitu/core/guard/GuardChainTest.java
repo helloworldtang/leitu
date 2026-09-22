@@ -1,5 +1,6 @@
 package cn.youhuale.leitu.core.guard;
 
+import cn.youhuale.leitu.core.context.model.Operator;
 import cn.youhuale.leitu.core.guard.api.GuardChain;
 import cn.youhuale.leitu.core.guard.model.AccessRequest;
 import cn.youhuale.leitu.core.guard.model.Decision;
@@ -70,6 +71,29 @@ class GuardChainTest {
     void 重试时长必须为正() {
         assertThrows(IllegalArgumentException.class, () -> Retry.later(Duration.ZERO));
         assertThrows(IllegalArgumentException.class, () -> Retry.later(Duration.ofSeconds(-1)));
+    }
+
+    /**
+     * 反向自测（#15）：判定请求要能携带操作者全貌，判定层才看得见"匿名"，
+     * 不用各自去比对 "anonymous" 字面量。
+     */
+    @Test
+    void 请求携带操作者全貌_匿名可见() {
+        AccessRequest anon = AccessRequest.inbound(Operator.anonymous(), "order:cancel", "order-42");
+        assertTrue(anon.anonymous());
+        assertEquals("anonymous", anon.subject(), "subject 仍从操作者取，判定层无需改读法");
+
+        AccessRequest human = AccessRequest.inbound(Operator.human("alice", "tenant-a"), "order:cancel", "order-42");
+        assertFalse(human.anonymous());
+        assertEquals("tenant-a", human.operator().tenant(), "带上全貌后租户也可得（判定按租户放行有了前提）");
+    }
+
+    /** 未携带操作者时不替判定层猜——没有信息就是没有信息。 */
+    @Test
+    void 未携带操作者时不猜匿名() {
+        assertFalse(AccessRequest.inbound("anonymous", "order:cancel", "order-42").anonymous(),
+                "只给 subject 时无从判断类型：猜成匿名会把真人误拒，猜成非匿名又漏放——都不猜");
+        assertNull(AccessRequest.inbound("alice", "order:cancel", "order-42").operator());
     }
 
     @Test
