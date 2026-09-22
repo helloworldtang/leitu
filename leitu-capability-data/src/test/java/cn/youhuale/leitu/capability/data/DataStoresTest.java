@@ -3,6 +3,7 @@ package cn.youhuale.leitu.capability.data;
 import cn.youhuale.leitu.capability.data.api.DataStores;
 import cn.youhuale.leitu.capability.data.model.AuditFields;
 import cn.youhuale.leitu.capability.data.model.Auditable;
+import cn.youhuale.leitu.capability.data.model.PageRequest;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
 import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
@@ -18,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -47,6 +49,46 @@ class DataStoresTest {
         @Override
         public Instant instant() {
             return now;
+        }
+
+        @Override
+        public ZoneOffset getZone() {
+            return ZoneOffset.UTC;
+        }
+
+        @Override
+        public Clock withZone(java.time.ZoneId zone) {
+            return this;
+        }
+    }
+
+    /**
+     * 慢 wither 的测试实体：把 save 的检查（行在不在）与写入之间的窗口撑开到可观测规模。
+     * {@code stamps} 收集每次落盖章——据此判断有几条线程走了"插入"分支。
+     */
+    record SlowNote(String id, AuditFields auditFields, List<AuditFields> stamps, long delayMillis)
+            implements Auditable {
+
+        @Override
+        public SlowNote withAuditFields(AuditFields auditFields) {
+            stamps.add(auditFields);
+            try {
+                Thread.sleep(delayMillis);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return new SlowNote(id, auditFields, stamps, delayMillis);
+        }
+    }
+
+    /** 每次读取都前进一秒的时钟：插入章 createdAt == updatedAt，更新章两者必不同——据此分辨分支。 */
+    static final class TickClock extends Clock {
+        private long ticks = 0;
+
+        @Override
+        public Instant instant() {
+            ticks++;
+            return Instant.parse("2026-09-13T00:00:00Z").plusSeconds(ticks);
         }
 
         @Override
@@ -249,6 +291,135 @@ class DataStoresTest {
             }
             assertEquals(100, store.findAll().size(), "2 线程 × 50 行不丢（ConcurrentHashMap）");
         }
+    }
+
+    @Test
+    void 分页_每页不超limit_且连续翻完不重不漏() {
+        DataStore<Note, String> store = store();
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            for (int i = 1; i <= 5; i++) {
+                store.save(Note.create("p-" + i));
+            }
+        }
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("bob", "tenant-b"), "t-2"))) {
+            store.save(Note.create("other-1"));
+        }
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            PageRequest page = PageRequest.first(2);
+            List<String> seen = new ArrayList<>();
+            for (int i = 0; i < 3; i++) {
+                List<Note> rows = store.findAll(page);
+                assertTrue(rows.size() <= 2, "每页不超过 limit（最后一页可不满）：" + rows.size());
+                rows.forEach(n -> seen.add(n.id()));
+                page = page.next();
+            }
+            assertEquals(List.of("p-1", "p-2", "p-3", "p-4", "p-5"), seen,
+                    "连续翻完 = 本租户全量，且一行只出现一次（排序不稳定就会重行或漏行）");
+        }
+    }
+
+    @Test
+    void 分页_只见本租户的行() {
+        DataStore<Note, String> store = store();
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            store.save(Note.create("a-1"));
+            store.save(Note.create("a-2"));
+        }
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("bob", "tenant-b"), "t-2"))) {
+            store.save(Note.create("b-1"));
+        }
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            List<String> ids = store.findAll(PageRequest.first(10)).stream().map(Note::id).sorted().toList();
+            assertEquals(List.of("a-1", "a-2"), ids, "翻页同样只作用于当前租户");
+        }
+    }
+
+    @Test
+    void 分页参数非法_教学式失败() {
+        IllegalArgumentException e1 = assertThrows(IllegalArgumentException.class, () -> PageRequest.of(-1, 2));
+        assertTrue(e1.getMessage().contains("offset 不能为负"), e1.getMessage());
+        IllegalArgumentException e2 = assertThrows(IllegalArgumentException.class, () -> PageRequest.first(0));
+        assertTrue(e2.getMessage().contains("limit 必须"), e2.getMessage());
+    }
+
+    /**
+     * 反向自测（#11）：同一主键的并发首存，只许盖一次插入章，且创建信息归先到者。
+     *
+     * <p>旧实现是 {@code containsKey → 读旧行 → put} 的 check-then-act：两个线程可以同时读到
+     * "行不在"，双双走插入分支，后写入者把先到者的 createdBy/createdAt 整体覆盖——
+     * 而 JDBC 侧靠唯一约束不会有这一幕（见 JdbcDataStore），同一段业务在两个实现上得到两种答案。
+     * 这里把实体的 wither 故意放慢（30ms），把那个窗口撑到肉眼可见的规模。
+     */
+    @Test
+    void 并发首存_只盖一次插入章_创建信息归先到者() throws Exception {
+        List<AuditFields> stamps = java.util.Collections.synchronizedList(new ArrayList<>());
+        TickClock tick = new TickClock();
+        DataStore<SlowNote, String> store = DataStores.inMemory(SlowNote::id, tick);
+        String sameId = "n-race";
+
+        int n = 2;
+        CyclicBarrier gate = new CyclicBarrier(n);
+        List<Thread> threads = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            final int idx = i;
+            Thread thread = new Thread(() -> {
+                try (var threadScope = BINDER.bind(ExecutionContext.of(
+                        Operator.human("writer-" + idx, "tenant-a"), "t-race-" + idx))) {
+                    gate.await(5, java.util.concurrent.TimeUnit.SECONDS);
+                    store.save(new SlowNote(sameId, AuditFields.empty(), stamps, 30L));
+                } catch (InterruptedException | java.util.concurrent.BrokenBarrierException
+                         | java.util.concurrent.TimeoutException e) {
+                    throw new IllegalStateException("并发脚手架失败——不是被测行为", e);
+                }
+            });
+            thread.start();
+            threads.add(thread);
+        }
+        for (Thread thread : threads) {
+            thread.join(10_000L);
+        }
+
+        long insertStamps = stamps.stream()
+                .filter(f -> f.createdAt() != null && f.createdAt().equals(f.updatedAt()))
+                .count();
+        assertEquals(1, insertStamps, "两个线程同时首存，只该有一个落到插入分支：实测盖章记录=" + stamps);
+
+        AuditFields onlyInsert = stamps.stream()
+                .filter(f -> f.createdAt().equals(f.updatedAt())).findFirst().orElseThrow();
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("checker", "tenant-a"), "t-check"))) {
+            SlowNote row = store.findById(sameId)
+                    .orElseThrow(() -> new AssertionError("竞争结束后行必须存在"));
+            assertEquals(onlyInsert.createdAt(), row.auditFields().createdAt(),
+                    "createdAt 归先到者：不能被后到者的插入章重写");
+            assertEquals(onlyInsert.createdBy(), row.auditFields().createdBy());
+            assertTrue(row.auditFields().createdBy().startsWith("writer-"),
+                    "createdBy 是抢到插入的那个线程：" + row.auditFields().createdBy());
+        }
+    }
+
+    @Test
+    void 观察装饰器_翻页也记listed_带分页参数() {
+        DataStore<Note, String> store = store();
+        List<ObservationEvent> events = new ArrayList<>();
+        DataStore<Note, String> observed = DataStores.observing(store, Note::id, recorder(events));
+        try (var scope = BINDER.bind(
+                ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            observed.save(Note.create("n-1"));
+            observed.findAll(PageRequest.first(2));
+        }
+        ObservationEvent listed = events.stream()
+                .filter(e -> e.name().equals("data.listed")).findFirst()
+                .orElseThrow(() -> new AssertionError("翻页必须留痕：否则读了多少行无人知道"));
+        assertEquals("1", listed.attributes().get("data.count"));
+        assertEquals("0", listed.attributes().get("data.offset"));
+        assertEquals("2", listed.attributes().get("data.limit"));
     }
 
     @Test

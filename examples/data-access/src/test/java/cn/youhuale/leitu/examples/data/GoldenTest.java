@@ -53,6 +53,32 @@ class GoldenTest {
         }
     }
 
+    /**
+     * 列表的标准用法是分页：接口层一律 {@code findAll(PageRequest)}，
+     * 全量 findAll() 留给离线任务——AI 照抄金样本时不该抄到 unbounded 那一条。
+     */
+    @Test
+    void 列表走分页_连续翻完不重不漏() {
+        DataStore<Order, String> orders = DataStores.inMemory(Order::id);
+        try (var scope = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-1"))) {
+            orders.save(Order.create("order-a", 1L));
+            orders.save(Order.create("order-b", 2L));
+            orders.save(Order.create("order-c", 3L));
+        }
+        try (var scope = BINDER.bind(ExecutionContext.of(Operator.human("alice", "tenant-a"), "t-2"))) {
+            List<String> seen = new ArrayList<>();
+            cn.youhuale.leitu.capability.data.model.PageRequest[] cursor =
+                    {cn.youhuale.leitu.capability.data.model.PageRequest.first(2)};
+            for (int i = 0; i < 2; i++) {
+                final cn.youhuale.leitu.capability.data.model.PageRequest page = cursor[0];
+                orders.findAll(page).forEach(o -> seen.add(o.id()));
+                cursor[0] = page.next();
+            }
+            assertEquals(List.of("order-a", "order-b", "order-c"), seen,
+                    "两页翻完 = 本租户全量，且一行只出现一次");
+        }
+    }
+
     @Test
     void 系统作用域_系统行不对租户可见() {
         DataStore<Order, String> orders = DataStores.inMemory(Order::id);

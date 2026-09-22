@@ -4,6 +4,7 @@ import cn.youhuale.leitu.capability.access.api.AccessGuards;
 import cn.youhuale.leitu.capability.access.model.RoleMap;
 import cn.youhuale.leitu.capability.data.api.DataStores;
 import cn.youhuale.leitu.capability.data.model.AuditFields;
+import cn.youhuale.leitu.capability.data.model.PageRequest;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
 import cn.youhuale.leitu.core.context.model.ExecutionContext;
@@ -47,7 +48,8 @@ public final class Demo {
         // 2) 租户隔离：tenant-b 对同主键三操作全扑空（不可见、不泄漏、不报错）
         try (var scope = binder.bind(ExecutionContext.of(Operator.human("mallory", "tenant-b"), "t-4"))) {
             System.out.println("隔离:     tenant-b findById=" + orders.findById("order-42")
-                    + " findAll=" + orders.findAll().size() + " delete=" + orders.deleteById("order-42"));
+                    + " findAll(页)=" + orders.findAll(PageRequest.first(50)).size()
+                    + " delete=" + orders.deleteById("order-42"));
         }
 
         // 3) "-" 系统作用域：系统行只对 "-" 上下文可见，不是全局通配

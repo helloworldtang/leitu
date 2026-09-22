@@ -26,7 +26,8 @@ public interface DataStore<T extends Auditable, ID> {            // 存取缝：
     T save(T entity);              // 落库即盖章：插入四件套全新；更新保 created 刷 updated
     Optional<T> findById(ID id);   // 只见当前租户的行；他租户同 id = empty（不泄漏不报错）
     boolean deleteById(ID id);     // 作用域内删除，未见 = false
-    List<T> findAll();             // 只列当前租户
+    List<T> findAll();             // 只列当前租户（离线/上限明确时才用）
+    List<T> findAll(PageRequest page);  // 翻页：接口层一律走这条——租户数据会增长
 }
 
 public final class DataStores {                     // api 工厂
@@ -37,9 +38,13 @@ public final class DataStores {                     // api 工厂
 }
 ```
 
-- **形状**：四操作最小面；实体经 Auditable 声明携带；主键提取器传方法引用（Order::id）
-- **兜底**：内存实现（ConcurrentHashMap，键=（租户, 主键）），toString 自我声明「内存实现，重启即失——生产必换 adapter」
-- **插拔**：真库 = adapter 实现 DataStore（盖章算法复用 AuditFields.stampedBy / restampedBy）；列表行过滤/分页/查询语言属 adapter
+- **形状**：四操作最小面（v1 起翻页入合同）；实体经 Auditable 声明携带；主键提取器传方法引用（Order::id）
+- **分页**：`PageRequest(offset, limit)` + `findAll(page)`；框架不刻死默认上限（一页多大由应用侧配额策略定，判定链 BudgetGuard 卡）
+  排序必须确定（内存=主键字符串升序，JDBC=`ORDER BY id`）——没确定顺序的翻页会重行或漏行
+- **兜底**：内存实现（ConcurrentHashMap，键=（租户, 主键）），toString 自我声明「内存实现，重启即失——生产必换 adapter」；
+  save 是一次原子 upsert（`compute` 内定插改），与 JDBC 的 UPDATE→INSERT 语义对齐——
+  两条路径互为对照，任一处分叉就意味着同一段业务会得到两种答案
+- **插拔**：真库 = adapter 实现 DataStore（盖章算法复用 AuditFields.stampedBy / restampedBy）；列表行过滤（查询条件注入）与查询语言属 adapter，分页已入合同（每个实现都得给出确定排序）
 - **成套答案**：数据权限不造新类型——单资源判定=判定链 Guard（resource 携数据主键）；观测=opt-in 装饰器记 data.* 事件
 - **收口**：数据权限用 {@code DataStores.guarded(store, chain, "order", Order::id)} 包在存取缝上——
   四种读写各自带判定动作（data:save / data:read / data:delete / data:list），资源名 = 域/主键，
@@ -65,7 +70,7 @@ public final class DataStores {                     // api 工厂
 
 ## 四、边界
 
-- 列表行过滤（查询条件注入）、分页、查询语言：adapter 扩展，v1 只有 findAll
+- 列表行过滤（查询条件注入）与查询语言：adapter 扩展；分页已入合同（findAll(PageRequest)），但**上限由应用侧配额策略定**——框架不刻死一个 magic number
 - 事务边界：catalog 条目 transaction-boundary 待裁（验尸中），本答案不预设
 - 审计回放（历史轨迹）：本答案给"章"不给"史"——data-changed-by-whom 未答，回放走观测事件流
 - 观察装饰器不记异常路径事件——失败形态是 failure-response 的地盘

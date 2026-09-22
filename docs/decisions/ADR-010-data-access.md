@@ -20,7 +20,9 @@ CRUD 是业务开发的主体；三条已答问题在此汇合——审计字段
 - **数据权限=判定链 Guard 侧**（AccessRequest.resource 携数据主键）；列表行过滤（查询条件注入）是查询优化，属 adapter——不造规则翻译器
 - **观察装饰器 opt-in**（`DataStores.observing(...)`）记 data.* 事件；默认不记，装配处组合可见；异常路径不记事件（失败形态是 failure-response 的地盘）
 - **内存兜底大声标注**（toString 自我声明「重启即失，生产必换 adapter」），金样本/开发/测试开箱即用——对照观测维度的日志级默认；真库由 adapter 实现 DataStore（盖章算法复用 AuditFields.stampedBy/restampedBy）
-- **DataStore 最小面**：save / findById / deleteById / findAll；过滤/分页/查询语言属 adapter
+- **DataStore 最小面**：save / findById / deleteById / findAll / findAll(PageRequest)；
+  **分页入合同的理由**：租户数据在长，取全量的列表迟早把整张表拖进内存——这不是优化题，是默认用法题；
+  合同要求实现给出确定排序（相邻窗口翻完不重不漏），过滤（查询条件注入）与查询语言仍属 adapter
 
 ## 业界对照
 

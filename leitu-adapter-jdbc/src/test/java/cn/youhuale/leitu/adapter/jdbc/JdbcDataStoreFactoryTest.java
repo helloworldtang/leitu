@@ -3,6 +3,7 @@ package cn.youhuale.leitu.adapter.jdbc;
 import cn.youhuale.leitu.capability.data.api.DataStores;
 import cn.youhuale.leitu.capability.data.model.AuditFields;
 import cn.youhuale.leitu.capability.data.model.Auditable;
+import cn.youhuale.leitu.capability.data.model.PageRequest;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextBinders;
 import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
@@ -200,6 +201,82 @@ class JdbcDataStoreFactoryTest {
             return null;
         });
         assertThat(as("alice", "tenant-a", () -> store().findAll())).hasSize(2);
+    }
+
+    /**
+     * 分页（#17）：租户数据在长，列表必须有上限。
+     *
+     * <p>断言两件事：① 每页不超过 limit；② 连续翻完<b>不重不漏</b>。
+     *
+     * <p><b>实证范围（诚实标注）</b>：我把实现里的 {@code ORDER BY id} 临时删掉跑过，
+     * 这条<b>没有变红</b>——H2 扫 (tenant, id) 主键索引的自然顺序恰好等于 id 升序。
+     * 也就是说这条守的是 limit/offset/租户隔离，<b>守不住排序</b>；排序改由
+     * {@link #翻页SQL必须显式排序_行为断言在H2上抓不到} 直接对着 SQL 文本守，两处说清楚。
+     */
+    @Test
+    void 分页_每页不超limit_且连续翻完不重不漏() {
+        // 故意倒序写入：行在表里的物理顺序 ≠ id 顺序。没有 ORDER BY 时，「自然顺序」就是物理顺序，
+        // 翻页会跟着插入顺序走——这条断言因此能抓住「漏写排序」而不是只看数据量对不对
+        as("alice", "tenant-a", () -> {
+            for (int i = 5; i >= 1; i--) {
+                store().save(TestOrder.create("p-" + i, i * 10L));
+            }
+            return null;
+        });
+        // 他租户的行不能混进本租户的分页
+        as("bob", "tenant-b", () -> {
+            store().save(TestOrder.create("q-1", 1L));
+            return null;
+        });
+
+        assertThat(as("alice", "tenant-a", () -> store().findAll()).stream().map(TestOrder::id).sorted().toList())
+                .containsExactly("p-1", "p-2", "p-3", "p-4", "p-5");
+
+        List<String> seen = new ArrayList<>();
+        PageRequest[] cursor = {PageRequest.first(2)};
+        for (int i = 0; i < 3; i++) {
+            final PageRequest page = cursor[0];
+            List<TestOrder> rows = as("alice", "tenant-a", () -> store().findAll(page));
+            assertThat(rows.size()).as("每页不超过 limit（最后一页可不满）").isLessThanOrEqualTo(2);
+            seen.addAll(rows.stream().map(TestOrder::id).toList());
+            cursor[0] = page.next();
+        }
+        assertThat(seen).as("连续翻完 = 本租户全量，且一行只出现一次")
+                .containsExactly("p-1", "p-2", "p-3", "p-4", "p-5");
+    }
+
+    /**
+     * 反向自测的补位：排序这条契约行为断言抓不到（理由见
+     * {@link #分页_每页不超limit_且连续翻完不重不漏} 的实证范围），就直接对 SQL 文本落闸。
+     *
+     * <p>为什么值得专门守：数据库的「自然顺序」不是契约——换引擎、换执行计划、加并行扫描，
+     * 同一条 SELECT 的行序就可能变。少了 {@code ORDER BY}，翻页会从"偶尔重行/漏行"
+     * 变成"数据量大起来之后必现"，而那时离写错已经很远了。
+     */
+    @Test
+    void 翻页SQL必须显式排序_行为断言在H2上抓不到() throws java.io.IOException {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/cn/youhuale/leitu/adapter/jdbc/internal/JdbcDataStore.java"));
+        assertThat(source)
+                .as("翻页查询必须显式写出 ORDER BY：数据库的自然顺序不是契约")
+                .contains("ORDER BY id LIMIT ? OFFSET ?");
+    }
+
+    @Test
+    void 分页_null入参_教学式失败() {
+        assertThatThrownBy(() -> as("alice", "tenant-a", () -> store().findAll(null)))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("page 必填");
+    }
+
+    @Test
+    void 分页参数非法_构造期即失败() {
+        assertThatThrownBy(() -> PageRequest.of(-1, 2))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("offset 不能为负");
+        assertThatThrownBy(() -> PageRequest.first(0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("limit 必须");
     }
 
     /**

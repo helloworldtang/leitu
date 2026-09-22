@@ -1,6 +1,7 @@
 package cn.youhuale.leitu.capability.data.internal;
 
 import cn.youhuale.leitu.capability.data.model.Auditable;
+import cn.youhuale.leitu.capability.data.model.PageRequest;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
 import cn.youhuale.leitu.core.guard.api.AccessDeniedException;
@@ -82,6 +83,14 @@ public final class GuardedDataStore<T extends Auditable, ID> implements DataStor
     public List<T> findAll() {
         check(ACTION_LIST, domain);
         return delegate.findAll();
+    }
+
+    /** 翻页同样过 {@code data:list} 判定：页数变了，越权的口子不能跟着变大。 */
+    @Override
+    public List<T> findAll(PageRequest page) {
+        Objects.requireNonNull(page, "page 必填：要哪一页说清楚——传 PageRequest.first(50)");
+        check(ACTION_LIST, domain);
+        return delegate.findAll(page);
     }
 
     /**

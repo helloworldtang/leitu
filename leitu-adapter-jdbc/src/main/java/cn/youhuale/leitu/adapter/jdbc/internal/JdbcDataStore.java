@@ -3,6 +3,7 @@ package cn.youhuale.leitu.adapter.jdbc.internal;
 import cn.youhuale.leitu.adapter.jdbc.JdbcMapping;
 import cn.youhuale.leitu.capability.data.model.AuditFields;
 import cn.youhuale.leitu.capability.data.model.Auditable;
+import cn.youhuale.leitu.capability.data.model.PageRequest;
 import cn.youhuale.leitu.capability.data.spi.DataStore;
 import cn.youhuale.leitu.core.context.api.ExecutionContextReader;
 import org.springframework.dao.DuplicateKeyException;
@@ -124,6 +125,21 @@ public final class JdbcDataStore<T extends Auditable, ID> implements DataStore<T
         return jdbc.sql(selectAllSql()).param(tenant()).query(mapping.rowMapper()).list();
     }
 
+    /**
+     * 翻页：{@code WHERE tenant = ? ORDER BY id LIMIT ? OFFSET ?}。
+     *
+     * <p>{@code ORDER BY id} 是这份实现的确定排序——没有它，同一个 limit/offset 两次查询
+     * 可能返回不同的行集合（数据库不承诺无 ORDER BY 的结果顺序），翻页会重行或漏行。
+     * 内存实现按主键字符串升序，两者同为"同一主键空间上的确定序"，首页内容因此互证。
+     */
+    @Override
+    public List<T> findAll(PageRequest page) {
+        Objects.requireNonNull(page, "page 必填：要哪一页说清楚——传 PageRequest.first(50)；"
+                + "取全部请用 findAll() 并确认上限可控（租户规模会增长）");
+        return jdbc.sql(selectPageSql()).param(tenant()).param(page.limit()).param(page.offset())
+                .query(mapping.rowMapper()).list();
+    }
+
     // ---- SQL 组装（表/列名在 JdbcMapping 构造期已做标识符校验） ----
 
     private String readColumnsSql() {
@@ -140,6 +156,11 @@ public final class JdbcDataStore<T extends Auditable, ID> implements DataStore<T
 
     private String selectAllSql() {
         return "SELECT " + readColumnsSql() + " FROM " + mapping.table() + " WHERE tenant = ?";
+    }
+
+    private String selectPageSql() {
+        // LIMIT ? OFFSET ? ——H2 / MySQL / PostgreSQL 通用；其余方言由 adapter 扩展点替换本方法即可
+        return selectAllSql() + " ORDER BY id LIMIT ? OFFSET ?";
     }
 
     private String insertSql() {
