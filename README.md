@@ -43,7 +43,7 @@
     <dependency>
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-parent</artifactId>
-      <version>0.2.0-SNAPSHOT</version>
+      <version>0.2.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
