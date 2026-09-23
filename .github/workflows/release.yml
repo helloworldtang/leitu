@@ -40,8 +40,24 @@ jobs:
             echo "手动触发：跳过 tag 比对，只校验非 SNAPSHOT"
             scripts/check-release-version.sh
           fi
-      # 发布集合：leitu-parent(pom) + 库模块（core / rules / 三能力 / 两适配 / starter）；examples 不发布
+      # setup-java 把私钥 import 到一个临时目录并 export 了 GNUPGHOME；那个目录是新建的空目录，
+      # 里面没有 gpg-agent.conf。而 pom 的 release profile 给 maven-gpg-plugin 固定传了
+      # --pinentry-mode loopback，gpg-agent 默认禁止调用方覆盖 pinentry。
+      # 注：本机 gpg 2.5.20 实测不加也能过（命令行显式给了 --passphrase 时 agent 会放行），
+      # 但 CI runner 上是 Ubuntu 自带的 gpg（版本不同），历史上该选项是必需项，故显式加上。
+      - name: 允许 loopback pinentry（CI 无 TTY）
+        run: |
+          GNUPGHOME_DIR="${GNUPGHOME:-$HOME/.gnupg}"
+          mkdir -p "$GNUPGHOME_DIR" && chmod 700 "$GNUPGHOME_DIR"
+          grep -q '^allow-loopback-pinentry$' "$GNUPGHOME_DIR/gpg-agent.conf" 2>/dev/null \
+            || echo "allow-loopback-pinentry" >> "$GNUPGHOME_DIR/gpg-agent.conf"
+          gpgconf --homedir "$GNUPGHOME_DIR" --kill gpg-agent || true
+      # 发布集合：leitu-parent(pom) + 库模块（core / rules / 三能力 / 两适配 / starter）；examples 不发布。
+      # 密码环境变量必须是 MAVEN_GPG_PASSPHRASE：maven-gpg-plugin 3.2.7 的 passphraseEnvName
+      # 默认值就是它，写成 GPG_PASSPHRASE 时插件读不到密码，会回落到 gpg-agent —— 而 CI 上的
+      # agent 既无缓存又无 TTY，最终卡在 pinentry 上超时失败。（构建走 .mvn/maven.config 里的
+      # -s .mvn/settings.xml，setup-java 生成到 ~/.m2/settings.xml 的那份不生效，别指望它兜底。）
       - name: Publish to Maven Central
         env:
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: ./mvnw -B -P release -pl .,leitu-core,leitu-rules,leitu-capability-access,leitu-capability-data,leitu-capability-cache,leitu-spring-boot-starter,leitu-adapter-jdbc,leitu-adapter-web deploy
