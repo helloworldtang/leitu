@@ -119,6 +119,10 @@ class DocsConsistencyTest {
         String pom = read(ROOT.resolve("pom.xml"));
         assertTrue(pom.contains("<artifactId>leitu-parent</artifactId>"), "这是根 pom 吗？");
         assertMatches(pom, "<url>[^<]+</url>", "项目主页 URL（Portal 展示用）");
+        // <description> 是六项里最容易漏的一项：README 有介绍、pom 有 <name>，于是没人写它，
+        // 而 Portal 的元数学校验要的就是这个字段本身。<name> 不能替代它。
+        assertMatches(pom, "<name>[^<]+</name>", "项目名称");
+        assertMatches(pom, "<description>[^<]+</description>", "项目描述（Portal 要求<｜hy_place▁holder▁no▁813｜>与 <name> 并存）");
         assertMatches(pom, "<licenses>\\s*<license>", "至少一条 license 条目");
         assertMatches(pom, "<licenses>(?s:.*?)<distribution>repo</distribution>",
                 "license 需声明 distribution=repo（随包分发的许可）");
