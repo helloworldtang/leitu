@@ -34,6 +34,17 @@
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-spring-boot-starter</artifactId>
     </dependency>
+    <!-- 本示例自己的代码直接用了 swagger 注解（@Operation）且断言 OpenAPI bean 存在，
+         所以 springdoc / knife4j 由本模块显式声明——starter 已把它们标为 optional，
+         不再顺带传递。自己用到的依赖自己声明，不要靠别人传递。 -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.baizhukui</groupId>
+      <artifactId>knife4j-openapi3-boot4-spring-boot-starter</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>

@@ -39,13 +39,20 @@
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-adapter-web</artifactId>
     </dependency>
+    <!-- 以下两项是「可选集成」，不是本 starter 的契约：LeituOpenApiAutoConfiguration 已用
+         @ConditionalOnClass(OpenAPI.class) 保护，使用者不引 springdoc 时它不会被加载，
+         也不会 ClassNotFound。标 optional 的理由：这个 starter 卖的是「判定链 + 失败交代」，
+         不该把一整套 Swagger UI 全家桶（springdoc + knife4j + webjar 前端资源，几十 MB）
+         强塞给每一个引它的人。需要文档增强的使用者自己显式引，examples/spring-boot 就是这么做的。 -->
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>com.baizhukui</groupId>
       <artifactId>knife4j-openapi3-boot4-spring-boot-starter</artifactId>
+      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
