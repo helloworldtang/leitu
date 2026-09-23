@@ -203,7 +203,12 @@
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
-              <autoPublish>true</autoPublish>
+              <!-- false = 上传后停在 Portal 待人工确认，不直接公开。
+                   设 true 时上传即公开、无确认环节；首发刻意留这道闸门：
+                   子模块的 url/licenses/developers/scm 靠 parent 继承，Portal 是否顺着
+                   parent 解析本地验证不了，只有人工看校验报告才知道，而那是最后一次
+                   能在公开前拦住问题的机会。0.2.0 走通一遍后再考虑改回 true。 -->
+              <autoPublish>false</autoPublish>
             </configuration>
           </plugin>
           <plugin>
