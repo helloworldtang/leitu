@@ -57,6 +57,13 @@ jobs:
       # 默认值就是它，写成 GPG_PASSPHRASE 时插件读不到密码，会回落到 gpg-agent —— 而 CI 上的
       # agent 既无缓存又无 TTY，最终卡在 pinentry 上超时失败。（构建走 .mvn/maven.config 里的
       # -s .mvn/settings.xml，setup-java 生成到 ~/.m2/settings.xml 的那份不生效，别指望它兜底。）
+      # leitu-rules 的守门人测试依赖 8 个 examples 模块（test scope），而 examples 不发布、
+      # 也不在下面 -pl 的列表里。少了这一步，deploy 时 reactor 里没有 examples，Maven 会去
+      # 镜像仓库找 cn.youhuale:leitu-example-*:0.2.0——那个坐标根本不存在，构建必然失败
+      #（v0.2.0 首次发布就挂在这里：前 7 个模块已上传，leitu-rules 解析失败）。
+      # 先全量 install 让 examples 进本地仓库，deploy 时就能解析到，且它们仍不会被上传。
+      - name: 装到本地仓库（examples 不发布，但 leitu-rules 的测试要用）
+        run: ./mvnw -B -DskipTests install
       - name: Publish to Maven Central
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
