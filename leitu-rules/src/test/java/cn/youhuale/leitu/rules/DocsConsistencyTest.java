@@ -161,6 +161,62 @@ class DocsConsistencyTest {
                 "版本闸门必须排在发布步骤（Publish to Maven Central）之前：先校验再发布，别反过来");
     }
 
+    /**
+     * 发布插件不得低于 0.11.0：低于它，发布会以「产物已上传、构建却报失败」的形态挂掉。
+     *
+     * <p>原因（v0.2.0 第 5 次发布实测，非推断）：central-publishing 0.7.0 解析 Portal 部署状态
+     * 用的 ObjectMapper 是构造器里裸 {@code new ObjectMapper()}，零配置，而 Jackson 的
+     * {@code FAIL_ON_UNKNOWN_PROPERTIES} 默认 true。Portal 只要新增响应字段（2026-09 起是
+     * {@code warnings}），就会在「bundle 上传成功之后、读校验结果时」抛
+     * UnrecognizedPropertyException——日志看着像发布失败，其实产物已在 Portal 上。
+     * 0.11.0 起该 mapper 改为静态字段并显式
+     * {@code configure(FAIL_ON_UNKNOWN_PROPERTIES, false)}，对未知字段免疫。
+     *
+     * <p>判据取「插件块内的 version」再做数值比较，不是断言"存在某个版本号"：
+     * 最容易发生的事故是有人为了"稳"把版本回退到记得住的旧版，而代价要等下一次发版才显现。
+     * 取块内而非紧邻匹配，是因为 artifactId 与 version 之间可能夹着说明注释。
+     */
+    @Test
+    void 发布插件不得低于0_11_0_否则解析Portal响应时会炸() throws IOException {
+        String pom = read(ROOT.resolve("pom.xml"));
+        int at = pom.indexOf("central-publishing-maven-plugin");
+        assertTrue(at > 0, "根 pom 必须声明 central-publishing-maven-plugin（release profile 的发布插件）");
+        int end = pom.indexOf("</plugin>", at);
+        String block = pom.substring(at, end > at ? end : pom.length());
+
+        Matcher m = Pattern.compile("<version>([^<]+)</version>").matcher(block);
+        assertTrue(m.find(), "central-publishing-maven-plugin 必须显式声明版本号，不要靠外部管理，"
+                + "否则本守卫无从判定它是否踩在已知会崩的区间里");
+        String version = m.group(1).trim();
+
+        assertTrue(compareVersions(version, "0.11.0") >= 0,
+                "central-publishing-maven-plugin 是 " + version + "，低于 0.11.0——0.11.0 之前"
+                        + "解析 Portal 响应用的是裸 ObjectMapper（Jackson 默认拒绝未知字段），"
+                        + "Portal 新增响应字段（如 warnings）时会在 bundle 已上传成功之后抛 "
+                        + "UnrecognizedPropertyException，表现为「包传上去了但构建报失败」。");
+    }
+
+    private static int compareVersions(String a, String b) {
+        int[] x = versionParts(a);
+        int[] y = versionParts(b);
+        for (int i = 0; i < x.length; i++) {
+            if (x[i] != y[i]) {
+                return Integer.compare(x[i], y[i]);
+            }
+        }
+        return 0;
+    }
+
+    private static int[] versionParts(String version) {
+        String[] parts = version.split("\\.");
+        int[] out = new int[3];
+        for (int i = 0; i < out.length && i < parts.length; i++) {
+            Matcher digits = Pattern.compile("^(\\d+)").matcher(parts[i].trim());
+            out[i] = digits.find() ? Integer.parseInt(digits.group(1)) : 0;
+        }
+        return out;
+    }
+
     private static void assertMatches(String pom, String regex, String why) {
         Pattern pattern = Pattern.compile(regex);
         assertTrue(pattern.matcher(pom).find(),
