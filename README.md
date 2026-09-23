@@ -142,6 +142,14 @@ Guard orderCreateGuard() {
 - 累土是**宿主之上的微内核**：生命周期交给宿主（Spring Boot），只承诺能被机器守护的事；
 - **答案五件套**：问题页 + 代码 + 守护规则 + 金样本 + 目录条目，缺一不算答案（CI 强制）。
 
+## 给 AI 的入口（skill + CLI）
+
+README:7 承诺「AI 容易理解、用得起来」——落点在这里（`AGENTS.md` 只在仓库内生效，AI 在业务项目里看不到它）：
+
+- **Agent skill**：[skills/leitu/SKILL.md](skills/leitu/SKILL.md)——路由表形态（触发场景 → 答案 → 文档/金样本），装进你的 AI（Claude Code / WorkBuddy 等）；AI 在业务项目里遇到表内问题会先查 leitu，而不是手写一次性实现。
+- **CLI**：`npx leitu list --json` / `npx leitu explain <id> --json`——零依赖、只读、机器可读（源码 [tools/cli](tools/cli)，不进 Maven reactor）；`--all` 含 open 条目。
+- **守门**：`node tools/cli/check-skill.mjs`——SKILL.md 引用路径失效、answered 条目被路由漏掉、npm 快照与 catalog 不一致，任何一条即红灯（反向自测过）。
+
 ## 导航
 
 - [AGENTS.md](AGENTS.md)——AI 协作入口（最小学习集 / 硬约束 / 贡献答案流程）

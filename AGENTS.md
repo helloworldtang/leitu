@@ -48,3 +48,4 @@
 - `eval/`：AI 生产力基准（**种子已立**：协议 + 第一条标准任务 + 参考解 + 基线记录）——标准任务集 + 完成率/时长/一次绿灯率；规模化待行
 - 最小上下文规格：一个全新 agent 学会本项目、正确写出第一个答案所需的最小阅读集（目标 ≤5 文件）
 - 架构状态导出：catalog → 4R 四图（Rank 双平面 / Role 职责 / Relation 依赖图 / Rule 规则清单），入口 `java scripts/ExportArchitecture.java`
+- AI 消费入口：`skills/leitu/SKILL.md`（对外路由表）+ `tools/cli`（`leitu list/explain`，零依赖只读）；改 catalog 后跑 `node tools/cli/check-skill.mjs`——SKILL.md 与 catalog 漂移会红

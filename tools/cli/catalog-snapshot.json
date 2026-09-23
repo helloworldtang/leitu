@@ -1,0 +1,321 @@
+{
+  "project": "leitu",
+  "version": "0.2.0-docs",
+  "note": "问题目录：本库回答哪些问题。字段制度见 docs/decisions/ADR-006。status: open=问题立目未答；drafted=答案已成文未实现；answered=五件套齐且有实现；deprecated/removed=退役（replaced_by 指向替代答案）。",
+  "entries": [
+    {
+      "id": "config-source",
+      "problem": "配置值从哪来？",
+      "facet": "pipeline",
+      "required": "always",
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.2.0",
+      "replaced_by": null,
+      "depends_on": [],
+      "sub_questions": ["秘密（凭据）是否独立于普通配置——轮换、脱敏、绝不落日志，变化原因不同"],
+      "links": {
+        "doc": "docs/problems/config-source.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.config",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/config-source"
+      }
+    },
+    {
+      "id": "who-is-operating",
+      "problem": "谁在操作？代表谁（租户）？这次调用的链路标识是什么？",
+      "facet": "pipeline",
+      "required": "always",
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.1.0",
+      "replaced_by": null,
+      "depends_on": [],
+      "sub_questions": ["身份、租户、trace 三者束成一组上下文", "操作者三态：HUMAN / SYSTEM / AGENT"],
+      "links": {
+        "doc": "docs/problems/who-is-operating.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.context",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/who-is-operating"
+      }
+    },
+    {
+      "id": "allow-or-not",
+      "problem": "这次访问（或出站调用）允许吗？",
+      "facet": "pipeline",
+      "required": "always",
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.1.0",
+      "replaced_by": null,
+      "depends_on": ["who-is-operating"],
+      "sub_questions": ["判定链：功能权限 / 数据权限 / 限流 / 配额 / 熔断 / 维护窗口 / 风控，任一 Guard 可否决"],
+      "links": {
+        "doc": "docs/problems/allow-or-not.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.guard",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/allow-or-not"
+      }
+    },
+    {
+      "id": "what-happened",
+      "problem": "发生了什么，怎么记录？",
+      "facet": "pipeline",
+      "required": "always",
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.1.0",
+      "replaced_by": null,
+      "depends_on": ["who-is-operating"],
+      "sub_questions": ["logs / metrics / traces 三支柱", "这次操作的成本——AI 调用的 token 与费用观测"],
+      "links": {
+        "doc": "docs/problems/what-happened.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.observe",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/what-happened"
+      }
+    },
+    {
+      "id": "failure-response",
+      "problem": "操作失败了，怎么向调用方交代？",
+      "facet": "pipeline",
+      "required": "always",
+      "status": "answered",
+      "stability": "frozen",
+      "since": "0.2.0",
+      "replaced_by": null,
+      "depends_on": ["who-is-operating", "allow-or-not", "what-happened"],
+      "sub_questions": ["业务错与系统错的分类", "错误结构", "否决类错误的重试语义（与判定链 Decision 对齐）"],
+      "links": {
+        "doc": "docs/problems/failure-response.md",
+        "code": "leitu-core:cn.youhuale.leitu.core.failure",
+        "rule": "leitu-core:CoreBoundaryRulesTest",
+        "example": "examples/failure-response"
+      }
+    },
+
+    {
+      "id": "who-cares",
+      "problem": "谁关心这个事件？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": [],
+      "sub_questions": [],
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "duplicate-request",
+      "problem": "同一请求来两次怎么办（幂等）？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": [],
+      "sub_questions": [],
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "data-changed-by-whom",
+      "problem": "数据被谁改的、能回放吗（审计）？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": ["who-is-operating", "what-happened"],
+      "sub_questions": [],
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "module-collaboration",
+      "problem": "模块间怎么协作？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": ["allow-or-not"],
+      "sub_questions": [],
+      "notes": "标准答案：经 OperationDispatcher（in-process，上下文传播/鉴权/观测在环），不直插对方 internal。见 ADR-004。",
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "transaction-boundary",
+      "problem": "事务边界在哪，提交后做什么？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": [],
+      "sub_questions": [],
+      "notes": "验尸中：主消费方是数据能力，管道测试弱通过。待 L1 复核归属（core 或 capability-data-access）。",
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+
+    {
+      "id": "data-access",
+      "problem": "业务数据怎么读写（审计字段、租户隔离、数据权限）？",
+      "facet": "capability",
+      "required": "conditional",
+      "status": "answered",
+      "stability": "stable",
+      "since": "0.2.0",
+      "replaced_by": null,
+      "depends_on": ["who-is-operating", "allow-or-not", "what-happened"],
+      "sub_questions": ["审计四件套：谁建/何时建/谁改/何时改（软删除与乐观锁是策略，留缝）",
+                        "租户是作用域不是实体字段——行归属在写入时定",
+                        "数据权限：单资源判定走判定链（resource=数据主键）；列表行过滤属 adapter"],
+      "links": {
+        "doc": "docs/problems/data-access.md",
+        "code": "leitu-capability-data:cn.youhuale.leitu.capability.data",
+        "rule": "leitu-rules:RepoBoundaryRulesTest",
+        "example": "examples/data-access"
+      }
+    },
+    {
+      "id": "identity",
+      "problem": "操作者身份怎么解析与建模（身份源、操作者模型）？",
+      "facet": "capability",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": [],
+      "notes": "回答管道问题 who-is-operating 的成套答案。认证传输（登录/JWT 校验）属 adapter 层，不在此能力。",
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "access",
+      "problem": "访问判定的成套答案（判定链用法 + 权限类 Guards）",
+      "facet": "capability",
+      "required": "conditional",
+      "status": "answered",
+      "stability": "stable",
+      "since": "0.1.0",
+      "replaced_by": null,
+      "depends_on": ["who-is-operating"],
+      "notes": "回答管道问题 allow-or-not 的成套答案。限流/配额为 guard 型能力，走准入流程先 experimental。见 ADR-005。",
+      "links": {
+        "doc": "docs/problems/allow-or-not.md",
+        "code": "leitu-capability-access:cn.youhuale.leitu.capability.access",
+        "rule": "leitu-rules:RepoBoundaryRulesTest",
+        "example": "examples/access"
+      }
+    },
+    {
+      "id": "cache",
+      "problem": "怎么缓存（可观测、可替换：进程内 / Redis）？",
+      "facet": "capability",
+      "required": "conditional",
+      "status": "answered",
+      "stability": "stable",
+      "since": "0.2.0",
+      "replaced_by": null,
+      "depends_on": ["config-source", "what-happened"],
+      "sub_questions": ["TTL + LRU 容量上限：生产可用的最小集（无上限缓存是内存 footgun）",
+                        "装载三段式收进 getOrLoad：进程内同键并发只装载一次；分布式不承诺（互斥是 lock 能力的事）",
+                        "租户是作用域：键在内部复合（租户, 键），跨租户不可见；\"-\" 是系统作用域不是全局通配"],
+      "links": {
+        "doc": "docs/problems/cache.md",
+        "code": "leitu-capability-cache:cn.youhuale.leitu.capability.cache",
+        "rule": "leitu-rules:RepoBoundaryRulesTest",
+        "example": "examples/cache"
+      }
+    },
+    {
+      "id": "lock",
+      "problem": "并发互斥怎么锁（进程内 / Redis / ZooKeeper）？",
+      "facet": "capability",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": ["config-source", "what-happened"],
+      "sub_questions": [],
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "storage",
+      "problem": "对象存储怎么用（本地 / S3 / MinIO）？",
+      "facet": "capability",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": ["config-source", "what-happened"],
+      "sub_questions": [],
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+
+    {
+      "id": "secrets-split",
+      "problem": "秘密管理是否独立成问（与普通配置分离）？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": ["config-source"],
+      "notes": "open 候选：真实项目疼了再升级。",
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "feature-flags",
+      "problem": "特性开关怎么管理？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": ["config-source"],
+      "notes": "open 候选。",
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "input-validation",
+      "problem": "进来的数据可信吗（入参验证的位置与标准做法）？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "open",
+      "stability": null,
+      "since": null,
+      "replaced_by": null,
+      "depends_on": [],
+      "notes": "open 候选。",
+      "links": { "doc": null, "code": null, "rule": null, "example": null }
+    },
+    {
+      "id": "api-contract",
+      "problem": "服务对外暴露了什么（对外 API 表达）？",
+      "facet": "pipeline",
+      "required": "conditional",
+      "status": "answered",
+      "stability": "stable",
+      "since": "0.2.0",
+      "replaced_by": null,
+      "depends_on": [],
+      "notes": "实现已落地（ADR-013 / ADR-014 / ADR-015）：springdoc + knife4j 接线随 starter 交付；四条增值点=problem+json 投影 / traceId 头 / 动作同源建议 / 端点豁免谓词。",
+      "links": {
+        "doc": "docs/problems/api-contract.md",
+        "code": "leitu-spring-boot-starter:cn.youhuale.leitu.starter",
+        "rule": "leitu-rules:RepoBoundaryRulesTest",
+        "example": "examples/spring-boot"
+      }
+    }
+  ]
+}
