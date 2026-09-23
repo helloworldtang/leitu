@@ -138,6 +138,33 @@ class RepoBoundaryRulesTest {
         assertTrue(managed.contains("leitu-core"), "leitu-core 应当在 dependencyManagement 里：" + managed);
     }
 
+    /**
+     * starter 的「可选集成」必须标 optional：任何引 leitu-spring-boot-starter 的人，都不该被
+     * 顺带塞进一整套接口文档套件（springdoc + knife4j + webjar 前端资源，几十 MB）——
+     * 那是使用者的选择，不是这个 starter 的契约。
+     *
+     * <p>判据用结构化正则（artifactId 后面紧跟 {@code <optional>true</optional>}），
+     * 不用 {@code contains("optional")}：pom 注释里就写着 optional 这个词，
+     * 用 contains 会被注释喂成恒绿（同「守卫自己的判据也要能失败」那条）。
+     */
+    @Test
+    void starter的可选集成必须标optional_不把文档套件强塞给使用者() throws IOException {
+        String text = Files.readString(
+                CatalogIntegrityTest.ROOT.resolve("leitu-spring-boot-starter/pom.xml"));
+        for (String artifact : new String[]{
+                "springdoc-openapi-starter-webmvc-ui",
+                "knife4j-openapi3-boot4-spring-boot-starter"}) {
+            Matcher m = Pattern.compile(
+                            "<artifactId>" + Pattern.quote(artifact) + "</artifactId>\\s*<optional>true</optional>",
+                            Pattern.DOTALL)
+                    .matcher(text);
+            assertTrue(m.find(),
+                    "leitu-spring-boot-starter 对 " + artifact + " 必须标 <optional>true</optional>——"
+                            + "不标的话每个引 starter 的项目都会被传递拖入整套接口文档套件。"
+                            + "需要它的使用者自己显式声明（examples/spring-boot 就是这么做的）。");
+        }
+    }
+
     private static Set<String> managedArtifactIds(Path parentPom) throws IOException {
         String text = Files.readString(parentPom);
         Matcher dm = Pattern.compile("<dependencyManagement>(.*?)</dependencyManagement>", Pattern.DOTALL)
