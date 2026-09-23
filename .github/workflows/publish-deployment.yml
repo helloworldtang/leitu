@@ -1,0 +1,84 @@
+# 手工发布已通过校验的 deployment。
+#
+# 为什么需要它：pom 里 autoPublish=false（首发刻意留的人工闸门），bundle 上传并通过校验后
+# 会停在 VALIDATED 状态，需要人工放行。Portal 上的 Publish 按钮只有登录者能点，CI 点不到；
+# 而这个仓库的凭据都在 Secrets 里，所以走官方 Publisher API 从 CI 放行，闭环才完整。
+#
+# 触发：Actions → publish-deployment → Run workflow → 填 deploymentId（在 release 日志里
+# "Uploaded bundle successfully ... deploymentId: xxxx" 那一行）。
+name: publish-deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploymentId:
+        description: 'deploymentId（release 日志里的 Uploaded bundle successfully 那行）'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+      CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+      DEPLOYMENT_ID: ${{ inputs.deploymentId }}
+    steps:
+      # 发布不可逆（Maven Central 上同版本不能重发），所以先取状态：只有 VALIDATED 才放行。
+      # 顺带把校验报告打到日志里——这正是 autoPublish=false 想换来的那一次"公开前看结果"的机会。
+      - name: 确认状态为 VALIDATED
+        run: |
+          AUTH=$(printf "%s:%s" "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')
+          CODE=$(curl -s -o status.json -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $AUTH" \
+            "https://central.sonatype.com/api/v1/publisher/status?id=$DEPLOYMENT_ID")
+          echo "status HTTP $CODE"
+          if [ "$CODE" != "200" ]; then
+            echo "::error::取不到部署状态（HTTP $CODE），不发布。检查 deploymentId 与凭据。"
+            exit 1
+          fi
+          cat status.json
+          STATE=$(jq -r '.deploymentState' status.json)
+          echo "deploymentState = $STATE"
+          case "$STATE" in
+            VALIDATED) echo "已通过校验，可以发布" ;;
+            PUBLISHED) echo "::error::该部署已经是 PUBLISHED，无需重复发布。"; exit 1 ;;
+            PUBLISHING) echo "::error::正在发布中，不要重复触发。"; exit 1 ;;
+            FAILED) echo "::error::该部署校验失败，拒绝发布。"; jq -r '.errors[]? ' status.json; exit 1 ;;
+            *) echo "::error::当前状态 $STATE 不允许发布（需 VALIDATED）。"; exit 1 ;;
+          esac
+
+      - name: 发布到 Maven Central（不可逆）
+        run: |
+          AUTH=$(printf "%s:%s" "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $AUTH" \
+            "https://central.sonatype.com/api/v1/publisher/deployment/$DEPLOYMENT_ID")
+          echo "publish HTTP $CODE（官方约定成功返回 204）"
+          if [ "$CODE" != "204" ]; then
+            echo "::error::发布请求未成功（HTTP $CODE）。"
+            exit 1
+          fi
+
+      # 发布后同步到 repo1 有延迟，轮询到终态为止，避免"返回 204 就以为完事了"。
+      - name: 等待终态（PUBLISHED / FAILED）
+        run: |
+          AUTH=$(printf "%s:%s" "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')
+          for i in $(seq 1 60); do
+            curl -s -o s.json -X POST -H "Authorization: Bearer $AUTH" \
+              "https://central.sonatype.com/api/v1/publisher/status?id=$DEPLOYMENT_ID"
+            STATE=$(jq -r '.deploymentState' s.json)
+            echo "[$i/60] $STATE"
+            if [ "$STATE" = "PUBLISHED" ]; then
+              jq -r '.purls[]?' s.json
+              echo "发布完成"
+              exit 0
+            fi
+            if [ "$STATE" = "FAILED" ]; then
+              echo "::error::发布后失败"
+              jq -r '.errors[]?' s.json
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "::error::10 分钟内未到达终态，请去 Portal 查看"
+          exit 1
