@@ -55,7 +55,7 @@
     <dependency>
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-parent</artifactId>
-      <version>0.2.0</version>
+      <version>0.2.1</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -63,10 +63,10 @@
 </dependencyManagement>
 ```
 
-> 引入姿势目前只有 **import BOM** 这一种。把 leitu-parent 写进 `<parent>` 在 0.2.0 **不可用**：
-> BOM 里自有模块的版本写的是 `${project.version}`，被继承时它会在**使用者的项目**里求值，
-> 变成去仓库找一个不存在的版本号（实测报 `Could not find artifact cn.youhuale:leitu-core:jar:<你的项目版本>`）。
-> 该问题已定位，随 0.2.1 修复。
+> 引入姿势两种都行。**推荐 import BOM**——Spring Boot 项目的 parent 位通常已被 `spring-boot-starter-parent` 占用。
+> 用 `<parent>` 继承（0.2.1 起可用）会顺带继承 `maven.compiler.release=21` 与 enforcer 的 JDK 门禁；
+> 0.2.0 的 parent 姿势不可用（BOM 里自有模块版本写的 `${project.version}` 被继承时在使用者项目里求值，
+> 实测报 `Could not find artifact cn.youhuale:leitu-core:jar:<你的项目版本>`）。
 
 再按需引依赖（版本号可省略）：
 
@@ -105,7 +105,7 @@ Guard orderCreateGuard() {
 - **入口**：在请求入口绑定操作者（照范例 Filter 写法，接入你的认证体系）；
 - **表约定**：存取器表含 `tenant / id / created_by / created_at / updated_by / updated_at` 六列（见 [data-access 问题页](docs/problems/data-access.md)）。
 
-**发布状态**：`0.2.0` 已发布到 Maven Central（groupId `cn.youhuale`），直接用上面的坐标引用即可，无需本地 install。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
+**发布状态**：`0.2.1` 已发布到 Maven Central（groupId `cn.youhuale`），直接用上面的坐标引用即可，无需本地 install。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
 
 ## 已交付的答案
 
@@ -160,10 +160,10 @@ README:7 承诺「AI 容易理解、用得起来」——落点在这里（`AGEN
 ## 状态与路线
 
 - **0.1.0（已发布）**：管道横切层——四条答案（who-is-operating / allow-or-not / what-happened + access 能力），每个操作在场的身份 / 放行 / 记录 / 访问判定；
-- **0.2.0 开发中**：第五～九条答案已入库（config-source / data-access / failure-response / cache / api-contract）+ **starter / adapter 层首批落地**——引依赖即用的默认装配、JDBC 真库路径、problem+json 投影——**五条无条件必答全部 answered**，测试全绿（数量由 CI 断言，文档不写死——写死的第二天就开始漂）；
+- **0.2.0（已发布）**：第五～九条答案已入库（config-source / data-access / failure-response / cache / api-contract）+ **starter / adapter 层首批落地**——引依赖即用的默认装配、JDBC 真库路径、problem+json 投影——**五条无条件必答全部 answered**，测试全绿（数量由 CI 断言，文档不写死——写死的第二天就开始漂）；
 - **API 文档已落地（answered）**：springdoc + knife4j 接线随 starter 交付（ADR-013 四条增值点）；
 - **未覆盖**：锁 / 存储，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
-- 下一程：dogfood（真实项目接入验证）→ 发版判定；
+- 下一程：0.2.1 转正 dogfood 分支（agent-platform 真实接入）；
 - 发布节奏：版本一律走 tag（已发 `v0.1.0`）；不承诺 main 分支稳定。
 
 ## 坐标与许可
