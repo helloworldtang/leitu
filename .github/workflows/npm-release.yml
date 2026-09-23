@@ -1,0 +1,29 @@
+name: npm-release
+# 发布 AI 消费入口 CLI（tools/cli）到 npm。
+# 前置条件（GitHub Secrets）：NPM_TOKEN —— npmjs.com 的 Automation Token。
+# 触发：推 cli-v* tag（用独立前缀，避开 Maven release 的 v* tag）：
+#   cd tools/cli && 改 package.json version && git tag cli-v0.2.1 && git push origin cli-v0.2.1
+# 发布成功的可见信号：npm 页面出现新版本 https://www.npmjs.com/package/leitu
+on:
+  push:
+    tags: ['cli-v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # npm provenance（供应链溯源）
+    defaults:
+      run:
+        working-directory: tools/cli
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      # prepack 钩子会把 ../../catalog/problems.json 拷成 catalog-snapshot.json（单一数据源）
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
