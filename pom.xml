@@ -58,6 +58,13 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>21</maven.compiler.release>
+    <!-- 自有模块的版本必须用显式属性、禁止 ${project.version}（守门人 RepoBoundaryRulesTest 强制）：
+         本 pom 同时被当 BOM import 和当 parent 继承。${project.version} 在 import 时按 BOM 自身
+         求值（=发布版本，正确），但被继承时会在【使用者项目】里求值（=使用者的版本号），
+         去仓库找一个不存在的坐标直接解析失败——2026-09-23 外部探针实测。
+         代价：发版时 versions:set 不会更新它，需同步 versions:set-property（或手动）改这一处，
+         守门人断言它与 project.version 相等，漏改即构建红灯。 -->
+    <leitu.version>0.2.0</leitu.version>
     <junit.version>5.11.4</junit.version>
     <archunit.version>1.3.0</archunit.version>
     <spring-boot.version>4.1.1</spring-boot.version>
@@ -96,42 +103,42 @@
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-core</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-rules</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-capability-access</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-capability-data</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-capability-cache</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-spring-boot-starter</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-adapter-jdbc</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>cn.youhuale</groupId>
         <artifactId>leitu-adapter-web</artifactId>
-        <version>${project.version}</version>
+        <version>${leitu.version}</version>
       </dependency>
       <dependency>
         <groupId>org.springdoc</groupId>

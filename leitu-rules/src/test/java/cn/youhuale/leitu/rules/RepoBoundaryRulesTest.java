@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -163,6 +164,67 @@ class RepoBoundaryRulesTest {
                             + "不标的话每个引 starter 的项目都会被传递拖入整套接口文档套件。"
                             + "需要它的使用者自己显式声明（examples/spring-boot 就是这么做的）。");
         }
+    }
+
+    /**
+     * BOM 自有模块的版本必须用显式属性 {@code <leitu.version>}，禁止 {@code ${project.version}}。
+     *
+     * <p>根 pom 被两种姿势消费：import BOM（{@code ${project.version}} 按 BOM 自身求值，正确）
+     * 与 {@code <parent>} 继承——继承时它会在<b>使用者项目</b>里求值（= 使用者的版本号），
+     * Maven 拿着这个版本去仓库找 {@code leitu-core:<使用者的版本>}，解析必失败。
+     * 2026-09-23 外部探针实测复现（干净仓库从 Central 拉包，报
+     * {@code Could not find artifact cn.youhuale:leitu-spring-boot-starter:jar:1.0.0}）。
+     * Spring Boot 官方 BOM 同判据：spring-boot-dependencies 里 {@code ${project.version}} 出现 0 次，全硬编码。
+     */
+    @Test
+    void BOM自有模块版本用显式属性_禁止projectVersion表达式() throws IOException {
+        String text = Files.readString(CatalogIntegrityTest.ROOT.resolve("pom.xml"));
+        String dm = dependencyManagement段(text);
+        assertTrue(dm.contains("<version>${leitu.version}</version>"),
+                "根 pom dependencyManagement 里应使用 <version>${leitu.version}</version> 引用自有模块版本。");
+        assertTrue(!dm.contains("<version>${project.version}</version>"),
+                "根 pom dependencyManagement 禁止 <version>${project.version}</version>——"
+                        + "被当 <parent> 继承时该表达式在使用者项目里求值，"
+                        + "下游会拿着自己的版本号来解析 leitu 模块，必然 Could not find artifact。"
+                        + "修复：改用 <version>${leitu.version}</version>。");
+        assertEquals(项目版本(text), leitu版本属性(text),
+                "<leitu.version> 与 project.version 不一致——发版时 versions:set 不会更新这个属性，"
+                        + "漏改会让 BOM 指向旧版本。同步：versions:set-property -Dproperty=leitu.version");
+    }
+
+    /** 反向自测：引用计数与版本抽取必须真实有效，否则上一条守门退化为恒绿。 */
+    @Test
+    void 自有模块版本引用解析出来了_守门人不是恒绿() throws IOException {
+        String text = Files.readString(CatalogIntegrityTest.ROOT.resolve("pom.xml"));
+        long refs = Pattern.compile(Pattern.quote("<version>${leitu.version}</version>"))
+                .matcher(text).results().count();
+        assertTrue(refs >= 8,
+                "根 pom 里应至少 8 处 <version>${leitu.version}</version>（8 个待发布模块），实际 " + refs
+                        + "——抽取计数坏了，BOM 版本守门会恒绿。");
+        assertTrue(!项目版本(text).isBlank() && !leitu版本属性(text).isBlank(),
+                "project.version 与 leitu.version 都必须能从根 pom 抽出非空值，否则一致性断言恒绿。");
+    }
+
+    /** dependencyManagement 段原文（含全部嵌套），供逐字符断言标签形态。 */
+    private static String dependencyManagement段(String text) throws IOException {
+        Matcher m = Pattern.compile("<dependencyManagement>(.*?)</dependencyManagement>", Pattern.DOTALL)
+                .matcher(text);
+        assertTrue(m.find(), "根 pom 里应存在 <dependencyManagement>");
+        return m.group(1);
+    }
+
+    /** 顶层 project version：锚定两空格缩进（顶层元素），避开 dependencyManagement 里的深缩进条目。 */
+    private static String 项目版本(String text) throws IOException {
+        Matcher m = Pattern.compile("(?m)^  <version>([^<]+)</version>").matcher(text);
+        assertTrue(m.find(), "根 pom 顶层 <version> 抽取失败");
+        return m.group(1).trim();
+    }
+
+    /** properties 里的 leitu.version 属性值（锚定四空格缩进）。 */
+    private static String leitu版本属性(String text) throws IOException {
+        Matcher m = Pattern.compile("(?m)^    <leitu\\.version>([^<]+)</leitu\\.version>").matcher(text);
+        assertTrue(m.find(), "根 pom properties 里应存在 <leitu.version> 属性");
+        return m.group(1).trim();
     }
 
     private static Set<String> managedArtifactIds(Path parentPom) throws IOException {
