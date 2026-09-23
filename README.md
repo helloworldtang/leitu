@@ -88,7 +88,7 @@ Guard orderCreateGuard() {
 - **入口**：在请求入口绑定操作者（照范例 Filter 写法，接入你的认证体系）；
 - **表约定**：存取器表含 `tenant / id / created_by / created_at / updated_by / updated_at` 六列（见 [data-access 问题页](docs/problems/data-access.md)）。
 
-**发布状态**：坐标尚未上 Maven Central（发版待办）——当前在本仓库 `./mvnw install` 后按 `0.2.0-SNAPSHOT` 引用；对外分发以发版为准。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
+**发布状态**：`0.2.0` 已发布到 Maven Central（groupId `cn.youhuale`），直接用上面的坐标引用即可，无需本地 install。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
 
 ## 已交付的答案
 
