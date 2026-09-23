@@ -34,6 +34,18 @@
 
 一个 Spring Boot 业务项目，两处改动即可用起来（完整范例：[examples/spring-boot](examples/spring-boot)）：
 
+两个前置，缺一个都会在编译期踩坑：
+
+1. **JDK 21**——leitu 以 release 21 编译发布，更低版本的 JVM 会直接 `UnsupportedClassVersionError`；
+2. **`maven.compiler.release=21` 必须自己写**——BOM import 只接管依赖版本，**不继承 properties**；
+   不写的话 maven-compiler-plugin 按默认低版本编译，JDK 21 下会报 `找不到符号: 类 var`：
+
+```xml
+<properties>
+  <maven.compiler.release>21</maven.compiler.release>
+</properties>
+```
+
 先在 dependencyManagement 里引入 leitu-parent（BOM）——**一次引入，八个模块都不用写版本号**
 （手写版本号是未来某次升级事故的起点；哪天想 pin 版本，只改这一处）：
 
@@ -50,6 +62,11 @@
   </dependencies>
 </dependencyManagement>
 ```
+
+> 引入姿势目前只有 **import BOM** 这一种。把 leitu-parent 写进 `<parent>` 在 0.2.0 **不可用**：
+> BOM 里自有模块的版本写的是 `${project.version}`，被继承时它会在**使用者的项目**里求值，
+> 变成去仓库找一个不存在的版本号（实测报 `Could not find artifact cn.youhuale:leitu-core:jar:<你的项目版本>`）。
+> 该问题已定位，随 0.2.1 修复。
 
 再按需引依赖（版本号可省略）：
 
