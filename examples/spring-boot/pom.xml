@@ -14,7 +14,9 @@
   <artifactId>leitu-example-spring-boot</artifactId>
 
   <!-- 本示例是完整 Spring Boot 4 应用：Boot 4 的测试基建要求 JUnit 6（ExtensionContext.Store 新签名）。
-       模块级 dependencyManagement 覆盖 parent 的 junit-bom（5.11.4，ArchUnit 安全线）——库内模块不动。 -->
+       模块级 dependencyManagement 用 junit-bom 6.0.3 管理（其余库内模块用 ${junit.version}=5.11.4，ArchUnit 安全线）。
+       根 BOM 自 0.2.1 起不再携带 junit-bom——2026-09-23 dogfood 实测它会泄漏给下游宿主，
+       把 Boot 4 宿主的 JUnit 6 压回 5.11.4，testcontainers/Spring 扩展直接 NoSuchMethod。 -->
   <dependencyManagement>
     <dependencies>
       <dependency>

@@ -74,14 +74,12 @@
 
   <dependencyManagement>
     <dependencies>
-      <dependency>
-        <groupId>org.junit</groupId>
-        <artifactId>junit-bom</artifactId>
-        <version>${junit.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-      <!-- 宿主 BOM（ADR-014）：Spring Boot 跟随当前稳定次要线；junit-bom 在其前，版本锁定先赢 -->
+      <!-- 本 BOM 会被下游业务项目 import（很多宿主的 parent 位已被 spring-boot-starter-parent 占用），
+           所以这里只允许出现两类条目：cn.youhuale 自有模块 + 与 leitu 兼容线强相关的宿主 BOM
+           （spring-boot-dependencies，ADR-014）。禁止 junit-bom 这类「只为自己测试服务」的版本管理：
+           2026-09-23 dogfood 实测，它把宿主（Boot 4.1.1 管 JUnit 6）压回 5.11.4，
+           testcontainers/Spring 扩展调 JUnit 平台新 API 直接 NoSuchMethod，下游测试全炸。
+           leitu 内部各模块的 junit 版本改由各模块 test 依赖显式引用 ${junit.version} 属性。 -->
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>

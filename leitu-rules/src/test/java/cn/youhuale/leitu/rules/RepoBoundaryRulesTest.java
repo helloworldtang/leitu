@@ -227,6 +227,21 @@ class RepoBoundaryRulesTest {
         return m.group(1).trim();
     }
 
+    /**
+     * 根 BOM 禁止 import junit-bom：它会被下游宿主项目 import 时一并带入，
+     * 把宿主（Boot 4 线管 JUnit 6）的 JUnit 压回 5.11.4——2026-09-23 dogfood 实测，
+     * agent-platform 全部测试报 NoSuchMethod ExtensionContext$Store.computeIfAbsent。
+     * examples/spring-boot 的注释里其实早写过这颗雷，当时只救了自己没扫下游（守门范围教训）。
+     */
+    @Test
+    void 根BOM禁止携带junitBom_不把内部测试版本管理泄漏给宿主() throws IOException {
+        String dm = dependencyManagement段(Files.readString(CatalogIntegrityTest.ROOT.resolve("pom.xml")));
+        assertTrue(!dm.contains("<artifactId>junit-bom</artifactId>"),
+                "根 pom dependencyManagement 禁止 import junit-bom——它只服务 leitu 内部测试，"
+                        + "随 BOM 泄漏给下游宿主会把宿主的 JUnit 版本压回 5.11.4（Boot 4 宿主测试全炸）。"
+                        + "leitu 内部用 ${junit.version} 显式版本，examples/spring-boot 用模块级 junit-bom 6.0.3。");
+    }
+
     private static Set<String> managedArtifactIds(Path parentPom) throws IOException {
         String text = Files.readString(parentPom);
         Matcher dm = Pattern.compile("<dependencyManagement>(.*?)</dependencyManagement>", Pattern.DOTALL)
