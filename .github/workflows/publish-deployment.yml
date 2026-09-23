@@ -1,4 +1,4 @@
-# 手工发布已通过校验的 deployment。
+# 手工发布已通过校验的 deployment（或继续观察一个在途的发布）。
 #
 # 为什么需要它：pom 里 autoPublish=false（首发刻意留的人工闸门），bundle 上传并通过校验后
 # 会停在 VALIDATED 状态，需要人工放行。Portal 上的 Publish 按钮只有登录者能点，CI 点不到；
@@ -6,6 +6,9 @@
 #
 # 触发：Actions → publish-deployment → Run workflow → 填 deploymentId（在 release 日志里
 # "Uploaded bundle successfully ... deploymentId: xxxx" 那一行）。
+#
+# 幂等：VALIDATED → 发布并等终态；PUBLISHING → 只等、不再发一次（防重复发布）；
+# PUBLISHED → 直接成功。所以卡住时重复触发是安全的，不会造成二次发布。
 name: publish-deployment
 
 on:
@@ -23,9 +26,9 @@ jobs:
       CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
       DEPLOYMENT_ID: ${{ inputs.deploymentId }}
     steps:
-      # 发布不可逆（Maven Central 上同版本不能重发），所以先取状态：只有 VALIDATED 才放行。
+      # 发布不可逆（Maven Central 上同版本不能重发），所以先取状态再决定动不动手。
       # 顺带把校验报告打到日志里——这正是 autoPublish=false 想换来的那一次"公开前看结果"的机会。
-      - name: 确认状态为 VALIDATED
+      - name: 取状态并决定是否发布
         run: |
           AUTH=$(printf "%s:%s" "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')
           CODE=$(curl -s -o status.json -w "%{http_code}" -X POST \
@@ -33,21 +36,39 @@ jobs:
             "https://central.sonatype.com/api/v1/publisher/status?id=$DEPLOYMENT_ID")
           echo "status HTTP $CODE"
           if [ "$CODE" != "200" ]; then
-            echo "::error::取不到部署状态（HTTP $CODE），不发布。检查 deploymentId 与凭据。"
+            echo "::error::取不到部署状态（HTTP $CODE），不动手。检查 deploymentId 与凭据。"
             exit 1
           fi
           cat status.json
-          STATE=$(jq -r '.deploymentState' status.json)
-          echo "deploymentState = $STATE"
-          case "$STATE" in
-            VALIDATED) echo "已通过校验，可以发布" ;;
-            PUBLISHED) echo "::error::该部署已经是 PUBLISHED，无需重复发布。"; exit 1 ;;
-            PUBLISHING) echo "::error::正在发布中，不要重复触发。"; exit 1 ;;
-            FAILED) echo "::error::该部署校验失败，拒绝发布。"; jq -r '.errors[]? ' status.json; exit 1 ;;
-            *) echo "::error::当前状态 $STATE 不允许发布（需 VALIDATED）。"; exit 1 ;;
+          echo
+          echo "deploymentState = $(jq -r '.deploymentState' status.json)"
+          echo "SHOULD_PUBLISH=no" >> "$GITHUB_ENV"
+          case "$(jq -r '.deploymentState' status.json)" in
+            VALIDATED)
+              echo "已通过校验 → 发布"
+              echo "SHOULD_PUBLISH=yes" >> "$GITHUB_ENV"
+              ;;
+            PUBLISHED)
+              echo "已经是 PUBLISHED，无需发布"
+              exit 0
+              ;;
+            PUBLISHING)
+              # 不是错误：正在上线中。只观察，绝不再 POST 一次（同版本不可重发）。
+              echo "正在上线中 → 不重复发布，只等待终态"
+              ;;
+            FAILED)
+              echo "::error::该部署校验失败，拒绝发布。"
+              jq -r '.errors[]?' status.json
+              exit 1
+              ;;
+            *)
+              echo "::error::当前状态不允许发布（需 VALIDATED；PENDING/VALIDATING 请稍后再看）。"
+              exit 1
+              ;;
           esac
 
       - name: 发布到 Maven Central（不可逆）
+        if: env.SHOULD_PUBLISH == 'yes'
         run: |
           AUTH=$(printf "%s:%s" "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')
           CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
@@ -59,18 +80,19 @@ jobs:
             exit 1
           fi
 
-      # 发布后同步到 repo1 有延迟，轮询到终态为止，避免"返回 204 就以为完事了"。
+      # 返回 204 只是"已受理"。Portal 的 PUBLISHING 阶段实测能超过 10 分钟（0.2.0 首发即如此），
+      # 所以窗口给到 40 分钟；超时不等于失败，只说明还没同步完。
       - name: 等待终态（PUBLISHED / FAILED）
         run: |
           AUTH=$(printf "%s:%s" "$CENTRAL_USERNAME" "$CENTRAL_PASSWORD" | base64 | tr -d '\n')
-          for i in $(seq 1 60); do
+          for i in $(seq 1 240); do
             curl -s -o s.json -X POST -H "Authorization: Bearer $AUTH" \
               "https://central.sonatype.com/api/v1/publisher/status?id=$DEPLOYMENT_ID"
             STATE=$(jq -r '.deploymentState' s.json)
-            echo "[$i/60] $STATE"
+            if [ $((i % 6)) -eq 1 ]; then echo "[$i/240] $STATE"; fi
             if [ "$STATE" = "PUBLISHED" ]; then
+              echo "PUBLISHED —— 组件清单："
               jq -r '.purls[]?' s.json
-              echo "发布完成"
               exit 0
             fi
             if [ "$STATE" = "FAILED" ]; then
@@ -80,5 +102,5 @@ jobs:
             fi
             sleep 10
           done
-          echo "::error::10 分钟内未到达终态，请去 Portal 查看"
+          echo "::error::40 分钟内未到达终态——这不代表失败，只说明 Portal 侧还没同步完；去 Portal 确认，或直接再跑一次本 workflow（PUBLISHING 状态下只会继续等待，不会重复发布）。"
           exit 1
