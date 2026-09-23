@@ -11,6 +11,12 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # 必须是 job 级：跑 Maven 的是「Publish to Maven Central」那一步，而 settings.xml 里的
+    # ${env.CENTRAL_USERNAME} 是在 Maven 进程里求值的——只有注入的那一步有这个变量的话，
+    # Maven 那边求值结果是空字符串，插件就会拿着字面量去认证（v0.2.0 首发即 401）。
+    env:
+      CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+      CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-java@v5
@@ -20,14 +26,19 @@ jobs:
           cache: maven
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
-      # 构建走项目级 .mvn/settings.xml（阿里云镜像），Central 凭据需注入同一份 settings（-s 会覆盖 ~/.m2）
+      # 构建走项目级 .mvn/settings.xml（阿里云镜像），Central 凭据需注入同一份 settings（-s 会覆盖 ~/.m2）。
+      # 必须写 ${env.CENTRAL_USERNAME}：settings.xml 里的 ${XXX} 是 Maven 属性，不是环境变量——
+      # 写成 ${CENTRAL_USERNAME} 时属性未定义，插件会原样拿着这个字面量去认证，结果是 401
+      #（v0.2.0 首发日志：Using Usertoken auth, with namecode: ${CENTRAL_USERNAME}）。
       - name: 注入 Central 凭据
-        env:
-          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
-          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
         run: |
-          sed -i "s#</mirrors>#</mirrors>\n  <servers>\n    <server>\n      <id>central</id>\n      <username>\${CENTRAL_USERNAME}</username>\n      <password>\${CENTRAL_PASSWORD}</password>\n    </server>\n  </servers>#" .mvn/settings.xml
+          sed -i "s#</mirrors>#</mirrors>\n  <servers>\n    <server>\n      <id>central</id>\n      <username>\${env.CENTRAL_USERNAME}</username>\n      <password>\${env.CENTRAL_PASSWORD}</password>\n    </server>\n  </servers>#" .mvn/settings.xml
           grep -A4 '<id>central</id>' .mvn/settings.xml
+          # 守门人：注入格式错了就当场停，别等到上传那一步才拿 401（那要等 3 分钟才暴露）
+          grep -q '\${env.CENTRAL_USERNAME}' .mvn/settings.xml || {
+            echo "::error::Central 凭据注入格式错误：settings.xml 里必须是 \${env.CENTRAL_USERNAME}"
+            exit 1
+          }
       # 版本闸门（#23）：tag 必须与 pom 版本一致，且不得是 SNAPSHOT。
       # 少了这道闸，① 打错 tag（v0.2.1 而 pom 还是 0.2.0）会把错误版本推上 Central，
       # 而组件一旦发布就不可撤回、版本号也不可复用；② 把 SNAPSHOT 推上 Portal，校验会拒收。
