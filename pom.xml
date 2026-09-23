@@ -199,7 +199,13 @@
           <plugin>
             <groupId>org.sonatype.central</groupId>
             <artifactId>central-publishing-maven-plugin</artifactId>
-            <version>0.7.0</version>
+            <!-- 不要降到 0.7.x：0.11.0 之前，客户端解析 Portal 响应用的 ObjectMapper
+                 是裸 new（Jackson 默认 FAIL_ON_UNKNOWN_PROPERTIES=true），Portal 一旦新增
+                 响应字段（如 2026-09 起的 warnings）就会在「上传成功后、解析校验结果时」
+                 抛 UnrecognizedPropertyException —— 包已经传上去了，构建却报失败，极难定位。
+                 0.11.0 把 mapper 改成静态字段并显式 configure(FAIL_ON_UNKNOWN_PROPERTIES, false)，
+                 对未知字段免疫。插件配置参数名两版完全一致，升级无需改配置。 -->
+            <version>0.11.0</version>
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
