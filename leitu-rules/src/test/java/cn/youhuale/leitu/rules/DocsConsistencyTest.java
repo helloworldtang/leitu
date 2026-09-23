@@ -147,7 +147,14 @@ class DocsConsistencyTest {
 
         String release = read(ROOT.resolve(".github/workflows/release.yml"));
         int gate = release.indexOf("check-release-version.sh");
-        int publish = release.indexOf("Publish to Maven Central");
+        // 判据要锚到 YAML 的步骤定义行，不能只搜裸字符串：
+        // v0.2.0 发版时我在 job env 的注释里写了「Publish to Maven Central」，indexOf 先匹配到
+        // 注释（在文件上方），于是这道守卫把顺序正确的流程判成错的。
+        // 用 ^\s*- name: 锚定行首：注释行第一个非空白字符是 #，不会被误匹配。
+        // 同「守卫自己的判据也要能失败」那条——判据必须指向结构，不能指向会出现在注释里的文本。
+        Matcher publishStep = Pattern.compile("(?m)^\\s*- name: Publish to Maven Central\\s*$")
+                .matcher(release);
+        int publish = publishStep.find() ? publishStep.start() : -1;
         assertTrue(gate > 0, "release.yml 必须调用 scripts/check-release-version.sh——"
                 + "以便在 tag 与 pom 版本不一致、或版本仍是 SNAPSHOT 时终止发布");
         assertTrue(publish > 0 && gate < publish,
