@@ -2,10 +2,17 @@ name: npm-release
 # 发布 AI 消费入口 CLI（tools/cli）到 npm。
 # 前置条件（GitHub Secrets）：NPM_TOKEN —— npmjs.com 的 Granular Access Token（leitu-cli 读写）。
 #
-# 触发方式与 exomind-cli 同款：**tag 触发，不随 push 自动发**——版本号必须人来定，
-# 靠「push 就发」会让每次改代码都有误发风险。日常两步：
-#   cd tools/cli && 改 package.json version  →  git tag cli-v<x.y.z> && git push origin cli-v<x.y.z>
-# 用独立前缀 cli-v*（避开 Maven 的 v*，否则误触发 release.yml 去发 Maven）。
+# 两条版本线，互不影响（不要把它们绑在一起）：
+#   · **leitu 库版本（Maven）—— 有语义的那条线**：真源 = 根 pom 的 <version>；
+#     它由 skills/leitu/SKILL.md 承载给 AI（新项目引哪个版本看这份文件），
+#     由守门人 tools/cli/check-skill.mjs 强制两者相等。发布 = 打 `v<x.y.z>` tag（release.yml）。
+#   · **npm CLI 版本 —— 无状态工具，没有语义**：CLI 只读一份 catalog 快照，版本不承载
+#     兼容性承诺，所以想发就发、不必等库版本；用的人一律取最新（`npx leitu-cli@latest`）。
+#     发布 = 打 `cli-v<x.y.z>` tag（本工作流）。改了 catalog 快照就顺手发一次。
+#
+# 本仓库里 `v*` 已被 Maven 占（release.yml），故 CLI 用 `cli-v*`；两个过滤器互不匹配
+# （`v*` 不以 c 开头，`cli-v*` 不以数字开头）。发布姿势：
+#   git tag cli-v<x.y.z> && git push origin cli-v<x.y.z>
 #
 # 安全试跑：Actions 页面 dispatch 本工作流并勾 dry_run —— 只跑自检与打包，不发布。
 #
@@ -39,7 +46,7 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-      # 上传前把「发了才发现」的问题挡住：tag↔版本一致（本仓库前缀 cli-v）、bin 有效
+      # 上传前把「发了才发现」的问题挡住：tag↔版本一致（本工作流 tag 前缀 cli-v）、bin 有效
       # （npm 会静默剥掉带 './' 前缀的 bin）、files 覆盖入口、版本未被 registry 占用。
       - name: 发布前置自检
         run: node preflight.mjs --tag-prefix=cli-v ${{ inputs.dry_run && '--allow-published' || '' }}
@@ -72,7 +79,7 @@ jobs:
         run: |
           V=$(npm pkg get version | tr -d '"')
           {
-            echo "### npm 发布：\`${GITHUB_REF_NAME}\`"
+            echo "### 发布：\`${GITHUB_REF_NAME}\`"
             echo ""
             if [ "${{ inputs.dry_run }}" = "true" ]; then
               echo "> **dry run**：只跑了自检与打包，未发布。"
@@ -80,8 +87,11 @@ jobs:
             fi
             echo "| 项 | 值 |"
             echo "|---|---|"
-            echo "| 包 / 命令 | \`leitu-cli\` / \`leitu\` |"
-            echo "| 仓内版本 | \`$V\` |"
+            echo "| npm CLI 版本 | \`$V\` |"
             echo "| registry 当前版本 | \`$(npm view leitu-cli version 2>/dev/null || echo '查询失败')\` |"
             echo "| 包页面 | https://www.npmjs.com/package/leitu-cli |"
+            echo ""
+            echo "> CLI 是无状态工具、版本无兼容性承诺：用的人一律 \`npx leitu-cli@latest\`。"
+            echo "> leitu **库**版本是另一条线（真源 = 根 pom 的 \`<version>\`，同步在 \`skills/leitu/SKILL.md\`），"
+            echo "> 由 \`v<x.y.z>\` tag 触发 release.yml，与本次发布无关。"
           } >> "$GITHUB_STEP_SUMMARY"

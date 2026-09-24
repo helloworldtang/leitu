@@ -105,7 +105,7 @@ Guard orderCreateGuard() {
 - **入口**：在请求入口绑定操作者（照范例 Filter 写法，接入你的认证体系）；
 - **表约定**：存取器表含 `tenant / id / created_by / created_at / updated_by / updated_at` 六列（见 [data-access 问题页](docs/problems/data-access.md)）。
 
-**发布状态**：Maven 侧 `0.2.1` 已发布到 Maven Central（groupId `cn.youhuale`），直接用上面的坐标引用即可，无需本地 install；npm 侧配套 CLI `leitu-cli@0.2.1` 已发布（`npx leitu-cli list`）。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
+**发布状态**：Maven 侧 `0.2.1` 已发布到 Maven Central（groupId `cn.youhuale`），直接用上面的坐标引用即可，无需本地 install；npm 侧配套 CLI `leitu-cli` 已发布（`npx leitu-cli@latest list`——CLI 是独立版本线，一律取最新）。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
 
 ## 已交付的答案
 
@@ -147,8 +147,8 @@ Guard orderCreateGuard() {
 README:7 承诺「AI 容易理解、用得起来」——落点在这里（`AGENTS.md` 只在仓库内生效，AI 在业务项目里看不到它）：
 
 - **Agent skill**：[skills/leitu/SKILL.md](skills/leitu/SKILL.md)——路由表形态（触发场景 → 答案 → 文档/金样本），装进你的 AI（Claude Code / WorkBuddy 等）；AI 在业务项目里遇到表内问题会先查 leitu，而不是手写一次性实现。
-- **CLI**：包名 `leitu-cli`（npm），命令名 `leitu`——`npx leitu-cli list --json` / `npx leitu-cli explain <id> --json`，或 `npm i -g leitu-cli` 后直接 `leitu list`。零依赖、只读、机器可读（源码 [tools/cli](tools/cli)，不进 Maven reactor）；`--all` 含 open 条目。
-- **守门**：`node tools/cli/check-skill.mjs`——SKILL.md 引用路径失效、answered 条目被路由漏掉、npm 快照与 catalog 不一致，任何一条即红灯（反向自测过）。
+- **CLI**：包名 `leitu-cli`（npm），命令名 `leitu`——`npx leitu-cli@latest list --json` / `npx leitu-cli@latest explain <id> --json`，或 `npm i -g leitu-cli@latest` 后直接 `leitu list`。零依赖、只读、机器可读（源码 [tools/cli](tools/cli)，不进 Maven reactor）；`--all` 含 open 条目。**用 CLI 一律取最新版、不要 pin 版本**：它只读一份目录快照，版本不承载兼容性承诺，与 leitu 库的版本线互不影响。
+- **守门**：`node tools/cli/check-skill.mjs`（或 `cd tools/cli && npm run check`）四条断言——SKILL.md 引用路径失效 / answered 条目被路由漏掉 / npm 快照与 catalog 不一致 / **SKILL.md 里的 leitu 版本 ≠ 根 pom 的 `<version>`**，任何一条即红灯（反向自测过）。前三条防「文档与答案漂移」，第四条防「AI 被引到旧版本」：库版本的真源是根 pom，SKILL.md 是它的消费面，靠人记得同步等于没有同步。
 
 ## 导航
 
@@ -161,10 +161,11 @@ README:7 承诺「AI 容易理解、用得起来」——落点在这里（`AGEN
 
 - **0.1.0（已发布）**：管道横切层——四条答案（who-is-operating / allow-or-not / what-happened + access 能力），每个操作在场的身份 / 放行 / 记录 / 访问判定；
 - **0.2.0（已发布）**：第五～九条答案已入库（config-source / data-access / failure-response / cache / api-contract）+ **starter / adapter 层首批落地**——引依赖即用的默认装配、JDBC 真库路径、problem+json 投影——**五条无条件必答全部 answered**，测试全绿（数量由 CI 断言，文档不写死——写死的第二天就开始漂）；
+- **0.2.1（已发布）**：修复 BOM 的 `${project.version}` 缺陷（改用 `<leitu.version>` 属性——`<parent>` 与 BOM import 两种引入姿势现在都可用）+ 根 BOM 撤出 junit-bom（不再把宿主的 JUnit 压回旧版）+ **AI 消费入口首发**（路由表 `skills/leitu/SKILL.md` + npm CLI `leitu-cli`）；dogfood 已转正（agent-platform 已升到 0.2.1）；
 - **API 文档已落地（answered）**：springdoc + knife4j 接线随 starter 交付（ADR-013 四条增值点）；
 - **未覆盖**：锁 / 存储，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
-- 下一程：0.2.1 转正 dogfood 分支（agent-platform 真实接入）；
-- 发布节奏：版本一律走 tag（Maven `v*`——`v0.1.0` / `v0.2.0` / `v0.2.1`；npm CLI `cli-v*`——`cli-v0.2.1`）；不承诺 main 分支稳定。
+- 下一程：把「AI 用得起」验到底——skill 在真实项目里被 AI 真正触发并调用 CLI 的实证；
+- 发布节奏：**两条版本线，互不影响**——① **leitu 库**（Maven）是有语义的那条线，真源 = 根 pom 的 `<version>`，`v<x.y.z>` tag 触发 `release.yml`（历史：`v0.1.0` / `v0.2.0` / `v0.2.1`），AI 通过 [skills/leitu/SKILL.md](skills/leitu/SKILL.md) 消费它——**新项目照抄该文件的版本，老项目保持项目里既有的版本不变**；② **npm CLI** 是无状态只读工具，版本不承载兼容性承诺，`cli-v<x.y.z>` tag 触发 `npm-release.yml`，用的人一律 `npx leitu-cli@latest`。两条线的版本号**不要互相绑定**；唯一被守门人强制的相等是 **SKILL.md ↔ 根 pom**（`tools/cli/check-skill.mjs`）。不承诺 main 分支稳定。
 
 ## 坐标与许可
 

@@ -14,13 +14,20 @@ leitu（累土）是一个已发布到 Maven Central 的 Java 21 / Spring Boot �
 先满足两个前置：**JDK 21**；业务项目 pom 里自己写 `<maven.compiler.release>21</maven.compiler.release>`
 （BOM import 只接管依赖版本，不继承 properties）。
 
+**引哪个版本是决策，不是随手抄**：
+
+| 你的场景 | 用什么版本 |
+|---|---|
+| **新项目**（pom 里还没有 leitu） | 用下面这段里的版本。它就是 leitu 当前最新发布版——本文件的版本号与 leitu 仓库根 pom 由守门人强制同步，照抄即可。 |
+| **老项目**（pom 里已经有 leitu） | **保持项目里既有的版本号不变**，不要顺手升级。升级是独立的、需要单独验证的动作，不在你手上这个任务的范围内。 |
+
 ```xml
 <dependencyManagement>
   <dependencies>
     <dependency>
       <groupId>cn.youhuale</groupId>
       <artifactId>leitu-parent</artifactId>
-      <version>0.2.0</version>
+      <version>0.2.1</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -35,6 +42,8 @@ leitu（累土）是一个已发布到 Maven Central 的 Java 21 / Spring Boot �
 
 引 starter 即拿到全部已交付答案的默认装配（用户 Bean 优先）。把 leitu-parent 写进 `<parent>`
 的姿势自 0.2.1 起才可用，0.2.0 只用 import BOM。
+
+**若上面这个版本在 Maven Central 上解析不到**（说明它刚 bump、还没走完发布），退回上一个已发布版本，并在回复里说明用的是哪个——别卡在解析失败上。
 
 ## 路由表：什么时候用哪条
 
@@ -52,7 +61,7 @@ leitu（累土）是一个已发布到 Maven Central 的 Java 21 / Spring Boot �
 | 对外暴露 API：契约、OpenAPI、接口文档 | API 契约 api-contract | docs/problems/api-contract.md | examples/spring-boot |
 | 埋观测：logs / metrics / traces，含 AI 调用 token 成本 | 观测 what-happened | docs/problems/what-happened.md | examples/what-happened |
 
-路径相对 leitu 仓库根；不在仓库内时，用 `npx leitu-cli explain <答案id>`（安装后命令为 `leitu`）取文档与金样本的 GitHub 地址。
+路径相对 leitu 仓库根；不在仓库内时，用 `npx leitu-cli@latest explain <答案id>`（安装后命令为 `leitu`）取文档与金样本的 GitHub 地址。
 
 ## leitu 还没有答案的（别装作有）
 
@@ -66,4 +75,4 @@ leitu（累土）是一个已发布到 Maven Central 的 Java 21 / Spring Boot �
 1. **先引库再写码**：表内问题的第一选择永远是引 starter 用现成答案；手写一次性实现是漂移的起点。
 2. **守卫声明即收编**：写一个 `Guard` Bean 即进入判定链，其余装配自动完成（用户 Bean 优先）。
 3. **金样本是唯一标准写法**：实现前先读对应 `examples/<id>`，照着写，不要发明新姿势。
-4. 需要机器可读的目录时用 `npx leitu-cli list --json`；查单条详情用 `npx leitu-cli explain <id> --json`（`npm i -g leitu-cli` 后命令简写为 `leitu`）。
+4. 需要机器可读的目录时用 `npx leitu-cli@latest list --json`；查单条详情用 `npx leitu-cli@latest explain <id> --json`（`npm i -g leitu-cli@latest` 后命令简写为 `leitu`）。**CLI 一律取最新版、不要 pin 版本**——它是无状态只读工具，版本不承载兼容性承诺；CLI 的版本号与 leitu 库的版本号是两条互不影响的线。

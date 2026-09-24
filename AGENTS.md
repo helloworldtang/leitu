@@ -42,11 +42,11 @@
 - **唯一构建入口：`./mvnw verify`**（编译 + 测试 + 边界规则 + **catalog 完整性 + markdown 链接检查**）。机器依赖只有 JDK 21——版本不对会被 enforcer 带着修复说明拦下。
 - **answered 的宣告权在机器**：`CatalogIntegrityTest`（leitu-rules）校验五件套真实存在、枚举合法、依赖图无孤儿、全仓相对链接有效——不满足的 answered/drafted 会让构建红灯。
 - 架构状态导出：`java scripts/ExportArchitecture.java`（JDK 单文件直接运行，无其他依赖；catalog 变更后跑，再生成 4R 视图；CI 侧另有 staleness 检查）。
-- **发布通道（两条 tag 前缀不能混用）**：Maven 推 `v*` → `release.yml` 上传 Central（`autoPublish=false`，停在 VALIDATED，还要用 `publish-deployment.yml` 走官方 API 放行）；npm CLI 推 `cli-v*` → `npm-release.yml`（上传前先跑 `tools/cli/preflight.mjs` 自检，成功后自动建 Release 并复核 registry 可见）。**改这两个流水线后用 `workflow_dispatch` + `dry_run=true` 试跑**——拿真版本试会撞 403。
+- **发布通道（两条版本线，互不影响，不要互相绑定）**：① **leitu 库——有语义的那条线**：`v<x.y.z>` tag → `release.yml` 上传 Maven Central（`autoPublish=false`，停在 VALIDATED，还要用 `publish-deployment.yml` 走官方 API 放行）。版本真源 = 根 pom 的 `<version>`，由 `skills/leitu/SKILL.md` 承载给 AI（新项目照抄该版本、老项目保持既有版本），守门人 `tools/cli/check-skill.mjs` 强制两者相等（CI 每次 push 都跑）。② **npm CLI——无状态工具，版本无兼容性承诺**：`cli-v<x.y.z>` tag → `npm-release.yml`（上传前先跑 `tools/cli/preflight.mjs --tag-prefix=cli-v` 自检，成功后自动建 Release 并复核 registry 可见）；用的人一律 `npx leitu-cli@latest`，所以它不必等库版本，改了 catalog 快照就顺手发一次。把 CLI 绑到库版本只会让「想给 CLI 修个 bug」变成「必须动库版本」。**改这两个流水线后用 `workflow_dispatch` + `dry_run=true` 试跑**——拿真版本试会撞 403。
 
 ## 评测与工具（占位，规划中）
 
 - `eval/`：AI 生产力基准（**种子已立**：协议 + 第一条标准任务 + 参考解 + 基线记录）——标准任务集 + 完成率/时长/一次绿灯率；规模化待行
 - 最小上下文规格：一个全新 agent 学会本项目、正确写出第一个答案所需的最小阅读集（目标 ≤5 文件）
 - 架构状态导出：catalog → 4R 四图（Rank 双平面 / Role 职责 / Relation 依赖图 / Rule 规则清单），入口 `java scripts/ExportArchitecture.java`
-- AI 消费入口：`skills/leitu/SKILL.md`（对外路由表）+ `tools/cli`（`leitu list/explain`，零依赖只读，**不进 Maven reactor**、不参与 `./mvnw verify`）；改 catalog 后跑 `node tools/cli/check-skill.mjs`——SKILL.md 与 catalog 漂移会红
+- AI 消费入口：`skills/leitu/SKILL.md`（对外路由表）+ `tools/cli`（`leitu list/explain`，零依赖只读，**不进 Maven reactor**、不参与 `./mvnw verify`）。守门人 `node tools/cli/check-skill.mjs` 四条断言——SKILL.md 引用路径 / answered 条目覆盖 / npm 快照 / **SKILL.md 里的库版本 == 根 pom 的 `<version>`**，任何一条漂移即红（也接在 CI 最前面）。改 catalog 或改版本后跑一遍。**CLI 自己的版本号不在此约束内**——它是无状态工具，用的人一律 `npx leitu-cli@latest`，与库版本各走各的 tag。

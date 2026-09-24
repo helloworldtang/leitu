@@ -5,6 +5,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      # SKILL.md 防漂移：引用路径失效 / answered 条目被路由漏掉 / npm 快照与 catalog 不一致 /
+      # **SKILL.md 里的 leitu 库版本 ≠ 根 pom 的 <version>**。放最前面：零依赖、秒级，也最该早红
+      # （AI 靠 SKILL.md 决定新项目引哪个版本，写着旧版本就是静默把人引到旧版）。
+      # 注意这里管的是**库版本**；npm CLI 的版本不在校验范围——CLI 一律取最新。
+      - run: node tools/cli/check-skill.mjs
       - uses: actions/setup-java@v5
         with:
           distribution: temurin

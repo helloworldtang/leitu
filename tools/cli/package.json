@@ -8,7 +8,6 @@
   },
   "files": [
     "leitu.mjs",
-    "check-skill.mjs",
     "catalog-snapshot.json"
   ],
   "scripts": {
