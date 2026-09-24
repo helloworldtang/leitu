@@ -39,10 +39,10 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-      # 上传前把「发了才发现」的问题挡住：tag↔版本一致、bin 有效
+      # 上传前把「发了才发现」的问题挡住：tag↔版本一致（本仓库前缀 cli-v）、bin 有效
       # （npm 会静默剥掉带 './' 前缀的 bin）、files 覆盖入口、版本未被 registry 占用。
       - name: 发布前置自检
-        run: node preflight.mjs ${{ inputs.dry_run && '--allow-published' || '' }}
+        run: node preflight.mjs --tag-prefix=cli-v ${{ inputs.dry_run && '--allow-published' || '' }}
       - name: 发布到 npm
         if: ${{ !inputs.dry_run }}
         run: npm publish --provenance --access public
