@@ -1,10 +1,10 @@
 {
-  "name": "leitu",
+  "name": "leitu-cli",
   "version": "0.2.1",
   "description": "累土 leitu——给人和 AI 的确定性后端地基：查询标准答案目录（list / explain）。零依赖，只读。",
   "type": "module",
   "bin": {
-    "leitu": "./leitu.mjs"
+    "leitu": "leitu.mjs"
   },
   "files": [
     "leitu.mjs",
@@ -21,7 +21,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/helloworldtang/leitu"
+    "url": "git+https://github.com/helloworldtang/leitu.git"
   },
   "keywords": [
     "leitu",

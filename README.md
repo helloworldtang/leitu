@@ -147,7 +147,7 @@ Guard orderCreateGuard() {
 README:7 承诺「AI 容易理解、用得起来」——落点在这里（`AGENTS.md` 只在仓库内生效，AI 在业务项目里看不到它）：
 
 - **Agent skill**：[skills/leitu/SKILL.md](skills/leitu/SKILL.md)——路由表形态（触发场景 → 答案 → 文档/金样本），装进你的 AI（Claude Code / WorkBuddy 等）；AI 在业务项目里遇到表内问题会先查 leitu，而不是手写一次性实现。
-- **CLI**：`npx leitu list --json` / `npx leitu explain <id> --json`——零依赖、只读、机器可读（源码 [tools/cli](tools/cli)，不进 Maven reactor）；`--all` 含 open 条目。
+- **CLI**：包名 `leitu-cli`（npm），命令名 `leitu`——`npx leitu-cli list --json` / `npx leitu-cli explain <id> --json`，或 `npm i -g leitu-cli` 后直接 `leitu list`。零依赖、只读、机器可读（源码 [tools/cli](tools/cli)，不进 Maven reactor）；`--all` 含 open 条目。
 - **守门**：`node tools/cli/check-skill.mjs`——SKILL.md 引用路径失效、answered 条目被路由漏掉、npm 快照与 catalog 不一致，任何一条即红灯（反向自测过）。
 
 ## 导航

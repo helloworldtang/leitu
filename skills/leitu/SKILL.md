@@ -52,7 +52,7 @@ leitu（累土）是一个已发布到 Maven Central 的 Java 21 / Spring Boot �
 | 对外暴露 API：契约、OpenAPI、接口文档 | API 契约 api-contract | docs/problems/api-contract.md | examples/spring-boot |
 | 埋观测：logs / metrics / traces，含 AI 调用 token 成本 | 观测 what-happened | docs/problems/what-happened.md | examples/what-happened |
 
-路径相对 leitu 仓库根；不在仓库内时，用 `npx leitu explain <答案id>` 取文档与金样本的 GitHub 地址。
+路径相对 leitu 仓库根；不在仓库内时，用 `npx leitu-cli explain <答案id>`（安装后命令为 `leitu`）取文档与金样本的 GitHub 地址。
 
 ## leitu 还没有答案的（别装作有）
 
@@ -66,4 +66,4 @@ leitu（累土）是一个已发布到 Maven Central 的 Java 21 / Spring Boot �
 1. **先引库再写码**：表内问题的第一选择永远是引 starter 用现成答案；手写一次性实现是漂移的起点。
 2. **守卫声明即收编**：写一个 `Guard` Bean 即进入判定链，其余装配自动完成（用户 Bean 优先）。
 3. **金样本是唯一标准写法**：实现前先读对应 `examples/<id>`，照着写，不要发明新姿势。
-4. 需要机器可读的目录时用 `npx leitu list --json`；查单条详情用 `npx leitu explain <id> --json`。
+4. 需要机器可读的目录时用 `npx leitu-cli list --json`；查单条详情用 `npx leitu-cli explain <id> --json`（`npm i -g leitu-cli` 后命令简写为 `leitu`）。

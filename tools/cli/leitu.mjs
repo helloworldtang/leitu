@@ -113,7 +113,7 @@ if (cmd === "explain") {
   const id = rest[0];
   const e = data.entries.find((x) => x.id === id);
   if (!e) {
-    fail(`目录中没有「${id}」。先 npx leitu list 查看全部条目。`);
+    fail(`目录中没有「${id}」。先运行 leitu list 查看全部条目。`);
   }
   const view = entryView(e, root);
   console.log(asJson ? JSON.stringify(view, null, 2) : renderText(view));
