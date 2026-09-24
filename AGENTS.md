@@ -6,7 +6,7 @@
 
 - 愿景一句话：人和 AI 共同使用、共同迭代的标准答案库——越用越厚，越用越稳。
 - 技术栈：Java 21；宿主 Spring Boot（core 层零框架依赖）。
-- 当前阶段：**0.2.0 开发中**（v0.1.0 已发布——管道横切层四条答案）。第五～九条答案已入库（配置来源 / 数据访问 / 失败交代 / 缓存 / API 文档），五条无条件必答全部 answered；**starter / adapter 层已落地**（引依赖即用 / JDBC 真库路径 / problem+json 投影，ADR-014 / ADR-015）；锁 / 存储等未覆盖，见 catalog `open` 条目（`open/drafted` 是正常态）。
+- 当前阶段：**0.2.1 已发布**，双通道——Maven Central（`cn.youhuale:*` 九坐标）与 npm（`leitu-cli`，命令 `leitu`）。第五～九条答案已入库（配置来源 / 数据访问 / 失败交代 / 缓存 / API 文档），五条无条件必答全部 answered；**starter / adapter 层已落地**（引依赖即用 / JDBC 真库路径 / problem+json 投影，ADR-014 / ADR-015）；锁 / 存储等未覆盖，见 catalog `open` 条目（`open/drafted` 是正常态）。
 
 ## 最小学习集（按序，≤5 个文件）
 
@@ -42,10 +42,11 @@
 - **唯一构建入口：`./mvnw verify`**（编译 + 测试 + 边界规则 + **catalog 完整性 + markdown 链接检查**）。机器依赖只有 JDK 21——版本不对会被 enforcer 带着修复说明拦下。
 - **answered 的宣告权在机器**：`CatalogIntegrityTest`（leitu-rules）校验五件套真实存在、枚举合法、依赖图无孤儿、全仓相对链接有效——不满足的 answered/drafted 会让构建红灯。
 - 架构状态导出：`java scripts/ExportArchitecture.java`（JDK 单文件直接运行，无其他依赖；catalog 变更后跑，再生成 4R 视图；CI 侧另有 staleness 检查）。
+- **发布通道（两条 tag 前缀不能混用）**：Maven 推 `v*` → `release.yml` 上传 Central（`autoPublish=false`，停在 VALIDATED，还要用 `publish-deployment.yml` 走官方 API 放行）；npm CLI 推 `cli-v*` → `npm-release.yml`（上传前先跑 `tools/cli/preflight.mjs` 自检，成功后自动建 Release 并复核 registry 可见）。**改这两个流水线后用 `workflow_dispatch` + `dry_run=true` 试跑**——拿真版本试会撞 403。
 
 ## 评测与工具（占位，规划中）
 
 - `eval/`：AI 生产力基准（**种子已立**：协议 + 第一条标准任务 + 参考解 + 基线记录）——标准任务集 + 完成率/时长/一次绿灯率；规模化待行
 - 最小上下文规格：一个全新 agent 学会本项目、正确写出第一个答案所需的最小阅读集（目标 ≤5 文件）
 - 架构状态导出：catalog → 4R 四图（Rank 双平面 / Role 职责 / Relation 依赖图 / Rule 规则清单），入口 `java scripts/ExportArchitecture.java`
-- AI 消费入口：`skills/leitu/SKILL.md`（对外路由表）+ `tools/cli`（`leitu list/explain`，零依赖只读）；改 catalog 后跑 `node tools/cli/check-skill.mjs`——SKILL.md 与 catalog 漂移会红
+- AI 消费入口：`skills/leitu/SKILL.md`（对外路由表）+ `tools/cli`（`leitu list/explain`，零依赖只读，**不进 Maven reactor**、不参与 `./mvnw verify`）；改 catalog 后跑 `node tools/cli/check-skill.mjs`——SKILL.md 与 catalog 漂移会红
