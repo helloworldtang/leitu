@@ -1,18 +1,34 @@
 name: npm-release
 # 发布 AI 消费入口 CLI（tools/cli）到 npm。
-# 前置条件（GitHub Secrets）：NPM_TOKEN —— npmjs.com 的 Automation Token。
-# 触发：推 cli-v* tag（用独立前缀，避开 Maven release 的 v* tag）：
-#   cd tools/cli && 改 package.json version && git tag cli-v0.2.1 && git push origin cli-v0.2.1
-# 发布成功的可见信号：npm 页面出现新版本 https://www.npmjs.com/package/leitu
+# 前置条件（GitHub Secrets）：NPM_TOKEN —— npmjs.com 的 Granular Access Token（leitu-cli 读写）。
+#
+# 触发方式与 exomind-cli 同款：**tag 触发，不随 push 自动发**——版本号必须人来定，
+# 靠「push 就发」会让每次改代码都有误发风险。日常两步：
+#   cd tools/cli && 改 package.json version  →  git tag cli-v<x.y.z> && git push origin cli-v<x.y.z>
+# 用独立前缀 cli-v*（避开 Maven 的 v*，否则误触发 release.yml 去发 Maven）。
+#
+# 安全试跑：Actions 页面 dispatch 本工作流并勾 dry_run —— 只跑自检与打包，不发布。
+#
+# 发版可见信号三重（写这一段是因为 exomind-cli v0.17.0「发布成功但没人知道」：
+# Actions 成功默认不发邮件、npm 也不发，Releases 页又长期为空）：
+#   ① 自动建 GitHub Release（Releases 页有条目 + 通知邮件）
+#   ② 本工作流 Summary 打出版本与包页面
+#   ③ 发布后轮询 registry 确认版本真的可见（看得见才算发成功）
 on:
   push:
     tags: ['cli-v*']
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '只跑自检与打包，不发布（验证工作流用）'
+        type: boolean
+        default: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
+      contents: write # 发布成功后自动建 GitHub Release
       id-token: write # npm provenance（供应链溯源）
     defaults:
       run:
@@ -23,7 +39,49 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-      # prepack 钩子会把 ../../catalog/problems.json 拷成 catalog-snapshot.json（单一数据源）
-      - run: npm publish --provenance --access public
+      # 上传前把「发了才发现」的问题挡住：tag↔版本一致、bin 有效
+      # （npm 会静默剥掉带 './' 前缀的 bin）、files 覆盖入口、版本未被 registry 占用。
+      - name: 发布前置自检
+        run: node preflight.mjs ${{ inputs.dry_run && '--allow-published' || '' }}
+      - name: 发布到 npm
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # 「发成功了但拉不到」必须知道——所以不靠 npm publish 的退出码，去 registry 复核。
+      - name: 确认版本已在 registry 可见
+        if: ${{ github.event_name == 'push' && !inputs.dry_run }}
+        run: |
+          V=$(npm pkg get version | tr -d '"')
+          for i in $(seq 1 18); do
+            if [ "$(npm view "leitu-cli@$V" version 2>/dev/null || true)" = "$V" ]; then
+              echo "registry 已可见：leitu-cli@$V（第 $((i*10)) 秒内）"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::发布后 3 分钟内 registry 未见到 leitu-cli@$V，请用 npm view 复核（可能只是传播延迟）"
+          exit 1
+      - name: 建 GitHub Release（发版可见信号）
+        if: ${{ github.event_name == 'push' && !inputs.dry_run }}
+        run: gh release create "$GITHUB_REF_NAME" --title "leitu-cli ${GITHUB_REF_NAME#cli-v}" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 结果写进 Summary
+        if: always()
+        run: |
+          V=$(npm pkg get version | tr -d '"')
+          {
+            echo "### npm 发布：\`${GITHUB_REF_NAME}\`"
+            echo ""
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "> **dry run**：只跑了自检与打包，未发布。"
+              echo ""
+            fi
+            echo "| 项 | 值 |"
+            echo "|---|---|"
+            echo "| 包 / 命令 | \`leitu-cli\` / \`leitu\` |"
+            echo "| 仓内版本 | \`$V\` |"
+            echo "| registry 当前版本 | \`$(npm view leitu-cli version 2>/dev/null || echo '查询失败')\` |"
+            echo "| 包页面 | https://www.npmjs.com/package/leitu-cli |"
+          } >> "$GITHUB_STEP_SUMMARY"
