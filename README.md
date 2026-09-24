@@ -105,7 +105,7 @@ Guard orderCreateGuard() {
 - **入口**：在请求入口绑定操作者（照范例 Filter 写法，接入你的认证体系）；
 - **表约定**：存取器表含 `tenant / id / created_by / created_at / updated_by / updated_at` 六列（见 [data-access 问题页](docs/problems/data-access.md)）。
 
-**发布状态**：`0.2.1` 已发布到 Maven Central（groupId `cn.youhuale`），直接用上面的坐标引用即可，无需本地 install。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
+**发布状态**：Maven 侧 `0.2.1` 已发布到 Maven Central（groupId `cn.youhuale`），直接用上面的坐标引用即可，无需本地 install；npm 侧配套 CLI `leitu-cli@0.2.1` 已发布（`npx leitu-cli list`）。**不要引用滚动的 main 分支**——升级必须是显式改版本号的决策动作。
 
 ## 已交付的答案
 
@@ -164,7 +164,7 @@ README:7 承诺「AI 容易理解、用得起来」——落点在这里（`AGEN
 - **API 文档已落地（answered）**：springdoc + knife4j 接线随 starter 交付（ADR-013 四条增值点）；
 - **未覆盖**：锁 / 存储，见[问题目录](catalog/problems.json)——引入前先确认你的缺口不在其中；
 - 下一程：0.2.1 转正 dogfood 分支（agent-platform 真实接入）；
-- 发布节奏：版本一律走 tag（已发 `v0.1.0`）；不承诺 main 分支稳定。
+- 发布节奏：版本一律走 tag（Maven `v*`——`v0.1.0` / `v0.2.0` / `v0.2.1`；npm CLI `cli-v*`——`cli-v0.2.1`）；不承诺 main 分支稳定。
 
 ## 坐标与许可
 
