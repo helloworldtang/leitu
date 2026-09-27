@@ -251,15 +251,36 @@ class CatalogIntegrityTest {
         assertTrue(broken.isEmpty(), "失效的相对链接（改路径必须同提交改引用）：\n" + String.join("\n", broken));
     }
 
+    /**
+     * 本仓库自己的 markdown——排除构建产物与<b>工具工作目录</b>。
+     *
+     * <p>为何连点开头的目录一起排除（2026-09-27 实测）：这道守卫按物理路径扫描工作区，
+     * 而 AI 协作工具会在工作区内落一个自我 gitignore 的 .zwork/（读取文档时留下的存档副本）。
+     * 副本处在比 docs/ 深两级的目录里，里面的 ../catalog/problems.json 等相对链接自然失效，
+     * 于是守卫报出一串「失效相对链接」——而它们既不属于本仓库的文档，也不在版本控制里，
+     * 是工具的临时产物把守卫判红了。守门人该判的是<b>仓库的内容</b>，不是工具的工作区；
+     * 判据收窄到内容而不动链接校验的严格性：docs/ 等真实文档里的失效链接照样红。
+     */
     Stream<Path> markdownFiles() throws IOException {
         return Files.walk(ROOT)
                 .filter(p -> {
                     String s = p.toString();
                     return s.endsWith(".md")
-                            && !s.contains("/.git/")
                             && !s.contains("/target/")
-                            && !s.contains("node_modules");
+                            && !s.contains("node_modules")
+                            && !isUnderDotDirectory(p);
                 });
+    }
+
+    /** .git / .zwork / .claude 一类的工具目录：不是本仓库的文档资产，不参与链接校验。 */
+    private static boolean isUnderDotDirectory(Path path) {
+        for (Path seg : ROOT.relativize(path.toAbsolutePath().normalize())) {
+            String name = seg.toString();
+            if (name.startsWith(".") && !name.equals(".")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static Path locate(Path root, String module, String fileName) throws IOException {
