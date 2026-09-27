@@ -26,7 +26,9 @@
 
 | # | 任务 | 基线（2026-09-21 · 预演，非独立采样） |
 |---|---|---|
-| 01 | [最小实体 CRUD 服务](tasks/01-entity-crud-service.md) | 完成 ✅ · 一次绿灯 ✅ · 参考解测试全绿（数量由 CI 的 `-P eval` 步骤回答，不写死在文档里） |
+| 01 | [最小实体 CRUD 服务](tasks/01-entity-crud-service.md) | **首次独立采样 ✅**（2026-09-27）：完成 6/6 · 一次绿灯 ✅ · 约 5 分 33 秒 · 20 条歧义点（含 1 处文档漂移，已修）；验收方冷仓库 + JDK21 + 真实 HTTP 独立复跑 |
+| 01 | 同上（预演，非独立采样） | 完成 ✅ · 一次绿灯 ✅ · 参考解测试全绿（数量由 CI 的 `-P eval` 步骤回答，不写死在文档里） |
 
 参考解：[reference/01-entity-crud-service](reference/01-entity-crud-service)（评分对照用；评测时不得给被评 agent 看）。
-详细基线记录见 [baselines.md](baselines.md)。
+详细基线记录见 [baselines.md](baselines.md)——**登记时务必写明采样的独立性边界**（n=1、执行者是否同一宿主、答案是否已物理剔除），
+否则下一次读者会把一次采样读成「已规模化验证」。
