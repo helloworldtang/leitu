@@ -99,9 +99,18 @@ Guard orderCreateGuard() {
 }
 ```
 
-引依赖即得：执行上下文（trace 贯穿）/ 判定链 / 观测 / 配置 / problem+json 失败投影 / `/v3/api-docs` 文档端点。接入要点（均可对照 [examples/spring-boot](examples/spring-boot)）：
+引依赖即得：执行上下文（trace 贯穿）/ 判定链 / 观测 / 配置 / problem+json 失败投影。接入要点（均可对照 [examples/spring-boot](examples/spring-boot)）：
 
 - **依赖**：Web + JDBC 用标准 Spring 组合（`spring-boot-starter-web` / `spring-boot-starter-jdbc` + 驱动）；控制器方法参数名依赖 `-parameters` 编译标志（Spring 应用标准配置）；
+- **要 `/v3/api-docs` 文档端点，必须自己引 springdoc**——starter 把它与 knife4j 标为 `optional`（不替使用者决定要不要那几十 MB 的 Swagger UI 全家桶），未引时 `LeituOpenApiAutoConfiguration` 不加载、端点不出现。要文档就加：
+
+```xml
+<dependency>
+  <groupId>org.springdoc</groupId>
+  <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+</dependency>
+```
+
 - **入口**：在请求入口绑定操作者（照范例 Filter 写法，接入你的认证体系）；
 - **表约定**：存取器表含 `tenant / id / created_by / created_at / updated_by / updated_at` 六列（见 [data-access 问题页](docs/problems/data-access.md)）。
 
