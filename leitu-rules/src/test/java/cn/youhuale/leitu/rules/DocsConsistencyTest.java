@@ -40,16 +40,7 @@ class DocsConsistencyTest {
 
     @Test
     void 文档不写死测试数量_数量由CI回答() throws IOException {
-        List<Path> docs = new ArrayList<>();
-        try (var walk = Files.walk(ROOT)) {
-            docs.addAll(walk
-                    .filter(p -> p.toString().endsWith(".md"))
-                    .filter(p -> !p.toString().contains("/target/"))
-                    // 工具工作目录（.zwork / .claude / .git）里的运行记录不是仓库文档：
-                    // 它们会被下一次运行覆盖，判它们等于把守卫的绿灯挂给临时文件。
-                    .filter(p -> !CatalogIntegrityTest.isUnderDotDirectory(p))
-                    .toList());
-        }
+        List<Path> docs = CatalogIntegrityTest.repoMarkdownFiles();
         for (Path doc : docs) {
             Matcher m = HARDCODED_TEST_COUNT.matcher(read(doc));
             if (m.find()) {
@@ -86,14 +77,7 @@ class DocsConsistencyTest {
 
         Pattern range = Pattern.compile("ADR-001~(\\d{3})");
         Pattern dated = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
-        List<Path> docs = new ArrayList<>();
-        try (var walk = Files.walk(ROOT)) {
-            docs.addAll(walk
-                    .filter(pa -> pa.toString().endsWith(".md"))
-                    .filter(pa -> !pa.toString().contains("/target/"))
-                    .filter(pa -> !CatalogIntegrityTest.isUnderDotDirectory(pa))
-                    .toList());
-        }
+        List<Path> docs = CatalogIntegrityTest.repoMarkdownFiles();
         int checked = 0;
         for (Path doc : docs) {
             for (String line : read(doc).split("\\R")) {
