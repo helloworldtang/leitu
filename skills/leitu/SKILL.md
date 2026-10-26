@@ -54,7 +54,7 @@ leitu（累土）是一个已发布到 Maven Central 的 Java 21 / Spring Boot �
 | 触发场景（用户想做…） | 答案 | 细读 | 金样本 |
 |---|---|---|---|
 | 加权限校验 / 限流 / 配额 / 熔断，或回答「这个请求允许吗」 | 判定链 allow-or-not | docs/problems/allow-or-not.md | examples/allow-or-not |
-| 要现成的权限类 Guards 组合、判定链完整用法 | 访问成套 access | docs/problems/allow-or-not.md | examples/access |
+| 要现成的权限类 Guards 组合、判定链完整用法 | 访问成套 access | docs/problems/access.md | examples/access |
 | 记录「谁在操作」：登录态、租户、traceId | 操作者上下文 who-is-operating | docs/problems/who-is-operating.md | examples/who-is-operating |
 | 操作失败时返回什么：业务错全量、系统错脱敏 + traceId | 失败交代 failure-response | docs/problems/failure-response.md | examples/failure-response |
 | 读写业务数据：审计字段、租户隔离、数据权限 | 数据访问 data-access | docs/problems/data-access.md | examples/data-access |

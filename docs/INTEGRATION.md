@@ -82,6 +82,8 @@
 **BOM import 与 `<parent>` 是二选一，不要叠加**：`<parent>` 继承姿势自 0.2.1 起可用（0.2.0 只能 import BOM），
 顺带拿到 compiler / surefire / enforcer 的配置；**项目在 leitu 仓库之外时必须写 `<relativePath/>`**，
 否则 Maven 会按默认的 `../pom.xml` 去找父工程。两个都写会得到两套版本管理，优先级靠猜——别试。
+用 `<parent>` 时**记得显式写自己的 `<version>`**——不写就继承 leitu 的 0.2.1，自己的服务顶着库的版本号，
+发布时才知道有多困惑。
 
 ## 2. 配置属性（框架只读这三个）
 
@@ -93,6 +95,7 @@
 
 配置来源固定三源兜底：**系统属性 → 环境变量 → `leitu.properties`**，读时求值；秘密（凭据）走 SPI，
 不进普通配置、不落日志。属性只在引了 springdoc 且自动配置加载后生效。
+**`leitu.properties` 不必建**——文件不存在是常态（空源），要建就放 classpath 根。
 
 依据：[config-source](problems/config-source.md)。
 
@@ -131,6 +134,9 @@ Boot 默认不跑，得自己上迁移工具或显式开 `spring.sql.init.mode=a
    **开关放测试/演示 profile，不要放进主配置**——放主配置等于把它带进生产。
    关着时一律匿名，而匿名不参与角色判定 → 得到 403，失败方向在安全侧；
 3. **请求头不能当身份来源进生产**——调用方可以任意伪造，那等于把门禁拆了。
+
+补一句排序焦虑的解药：**leitu 自己不装 Servlet Filter**，所以你的绑定 Filter 不需要刻意排顺序——
+任何 Filter 都天然早于 Controller，绑定在请求进业务前完成即可。
 
 依据：[who-is-operating](problems/who-is-operating.md)。
 
@@ -232,6 +238,8 @@ curl 'localhost:8080/orders/<id>' -H 'X-Demo-User: alice' -H 'X-Demo-Tenant: t2'
 ```
 
 路径与参数形态按你自己的控制器签名写（金样本用 `@RequestParam`）；上面三条只规定**行为**，不规定 URL。
+两个没规定的也不必猜：**创建成功码**金样本用 200，要用 201 也行，全服务统一即可；
+**id 由谁生成**是业务决定（金样本让调用方传，服务端生成就用 UUID）——验收只看行为，不看这一层。
 
 三条都过，说明管道、判定、隔离、失败投影四段都接上了。
 

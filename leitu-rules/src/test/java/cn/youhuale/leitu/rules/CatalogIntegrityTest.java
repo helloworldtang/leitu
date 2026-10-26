@@ -61,6 +61,29 @@ class CatalogIntegrityTest {
         }
     }
 
+    /**
+     * 四段式是问题页的骨架（#why：缺「为什么」人不知道凭什么信，缺「取舍」AI 会无差别滥用，
+     * 缺「边界」承诺就漫出去）。过去 8/8 齐靠习惯，没有守卫——本用例把它变成机器判据。
+     * 标题用 contains 匹配：允许「二、机制（……）」这类带补充说明的写法，只锁段落存在。
+     */
+    @Test
+    void answered问题页必须四段式() throws IOException {
+        List<String> broken = new ArrayList<>();
+        for (Catalog.Entry e : entries()) {
+            if (!"answered".equals(e.status()) || e.doc() == null) {
+                continue;
+            }
+            String body = Files.readString(ROOT.resolve(e.doc()));
+            for (String section : List.of("一、为什么", "二、机制", "三、取舍", "四、边界")) {
+                if (!body.contains("## " + section)) {
+                    broken.add(e.id() + "（" + e.doc() + "）缺二级标题「" + section + "」");
+                }
+            }
+        }
+        assertTrue(broken.isEmpty(),
+                "问题页四段式缺失（缺任何一段：人拿不到代价，AI 拿不到边界）：\n" + String.join("\n", broken));
+    }
+
     @Test
     void answered条目五件套真实存在() throws IOException {
         for (Catalog.Entry e : entries()) {

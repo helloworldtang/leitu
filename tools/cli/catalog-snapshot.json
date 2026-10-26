@@ -207,7 +207,7 @@
       "depends_on": ["who-is-operating"],
       "notes": "回答管道问题 allow-or-not 的成套答案。限流/配额为 guard 型能力，走准入流程先 experimental。见 ADR-005。",
       "links": {
-        "doc": "docs/problems/allow-or-not.md",
+        "doc": "docs/problems/access.md",
         "code": "leitu-capability-access:cn.youhuale.leitu.capability.access",
         "rule": "leitu-rules:RepoBoundaryRulesTest",
         "example": "examples/access"
