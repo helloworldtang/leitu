@@ -284,6 +284,7 @@
       <modules>
         <module>eval/reference/01-entity-crud-service</module>
         <module>eval/reference/02-cached-catalog-service</module>
+        <module>eval/reference/03-configured-fx-service</module>
       </modules>
     </profile>
   </profiles>

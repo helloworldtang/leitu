@@ -1,5 +1,41 @@
 # 基线记录
 
+## 2026-10-27 · 任务 03 首采（leitu 侧 + 对照组）
+
+- 任务卡：[03-configured-fx-service.md](tasks/03-configured-fx-service.md)（leitu 侧 v1）/
+  [03-control-no-leitu.md](tasks/03-control-no-leitu.md)（对照）。新覆盖答案面：**config-source + what-happened**
+  （任务 01/02 未压过的两个面）。
+- 参考解：`eval/reference/03-configured-fx-service`（`-P eval` 进 reactor，6 条验收 + 1 条规则测试绿；
+  配置驱动测试用测试属性覆盖 classpath leitu.properties，证明「改配置行为跟着变」）。
+- **最小上下文实测（本任务起随采样登记）**：任务 03 按序读清单实测 **6.2 万字符**
+  （接入清单 9.7k + 6 个问题页 14.8k + 3 个金样本源码 37.7k，估 3.4 万–4.7 万词元）。
+  对照「≤5 文件」目标：**文件 / 目录数 10 处，超目标**——这是实测暴露的第一个差距，规模化时收敛。
+
+### 读数并列（验收方对两侧均独立复跑：7/7 与 7/7 测试绿 + 真机三行为）
+
+| 指标 | leitu 侧 | 对照组（无 leitu） |
+|---|---|---|
+| 完成率 | **8 / 8** | **6 / 6** |
+| 一次绿灯 | **否**（自身测试方法名含 `+` 非法标识符——执行者自伤，非文档伤） | **否**（自身编译错误，同上） |
+| 时长 | **142 秒** | **51 秒**（对照侧执行者已是第三次做对照，老手效应显著） |
+| 歧义点 | 14 条 | 10 条 |
+
+留痕：[runs/2026-10-27-task03-leitu.md](runs/2026-10-27-task03-leitu.md) / [runs/2026-10-27-task03-control.md](runs/2026-10-27-task03-control.md)。
+
+### 采样产出的真缺口（已修）
+
+1. **自定义 Sink 的注册方式没写**：宿主怎么把事件接进自己的落点，问题页与接入清单均未说——
+   已补 what-happened 机制段 + INTEGRATION（声明 `ObservationSink` Bean 即被 starter 收编，测试用同缝捕获）；
+2. **失败调用记不记事件未写**：已补（协议不区分成败通道，`Outcome.failure("原因")` 即失败记录）；
+3. **成功响应的 X-Trace-Id 归属未写**：adapter 只在 problem+json 投影统一加，成功响应要带就端点自带——
+   已补 INTEGRATION §6（与观测事件同源，都取执行上下文）。
+
+### 诚实边界
+
+- 双 n=1；**对照侧执行者已是第三次做对照任务（老手效应压倒了框架收益——51 秒 vs 142 秒要这么读）**；
+- leitu 侧执行者首次接触本库，但同宿主；
+- 运营失误照登：首派误给了无执行能力的 agent，空转未产数据，不计入读数，重派后才是本记录。
+
 ## 2026-10-26 · 任务 02 首采（leitu 侧 + 对照组）
 
 - 任务卡：[02-cached-catalog-service.md](tasks/02-cached-catalog-service.md)（leitu 侧）/
