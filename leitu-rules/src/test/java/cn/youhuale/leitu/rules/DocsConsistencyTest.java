@@ -45,6 +45,9 @@ class DocsConsistencyTest {
             docs.addAll(walk
                     .filter(p -> p.toString().endsWith(".md"))
                     .filter(p -> !p.toString().contains("/target/"))
+                    // 工具工作目录（.zwork / .claude / .git）里的运行记录不是仓库文档：
+                    // 它们会被下一次运行覆盖，判它们等于把守卫的绿灯挂给临时文件。
+                    .filter(p -> !CatalogIntegrityTest.isUnderDotDirectory(p))
                     .toList());
         }
         for (Path doc : docs) {
@@ -88,6 +91,7 @@ class DocsConsistencyTest {
             docs.addAll(walk
                     .filter(pa -> pa.toString().endsWith(".md"))
                     .filter(pa -> !pa.toString().contains("/target/"))
+                    .filter(pa -> !CatalogIntegrityTest.isUnderDotDirectory(pa))
                     .toList());
         }
         int checked = 0;

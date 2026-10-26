@@ -273,7 +273,7 @@ class CatalogIntegrityTest {
     }
 
     /** .git / .zwork / .claude 一类的工具目录：不是本仓库的文档资产，不参与链接校验。 */
-    private static boolean isUnderDotDirectory(Path path) {
+    static boolean isUnderDotDirectory(Path path) {
         for (Path seg : ROOT.relativize(path.toAbsolutePath().normalize())) {
             String name = seg.toString();
             if (name.startsWith(".") && !name.equals(".")) {
