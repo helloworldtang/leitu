@@ -194,6 +194,9 @@ Guard orderCreateGuard() {
 | 控制器自己 `chain.check` 得到 deny | 返回 `Decision`，不抛 | 你自己调 `FailureNoticeException.from(decision, who)` 抛出 |
 | 未绑定操作者 | 匿名，不参与角色判定 | 403（失败方向在安全侧） |
 
+**成功响应的 traceId 端点自带**：adapter 只在 problem+json 投影里统一加 `X-Trace-Id`（不做无差别包装）；
+成功响应要带就自己在端点里 `response.setHeader("X-Trace-Id", who.current().traceId())`——与观测事件同源，都取执行上下文。
+
 **deny-by-default 到底管什么**（最常误读的一条）：它只指**空链**——一个 Guard 都没装配时一律拒；
 而「有 Guard 但不匹配这个 action」会返回 **allow**（匿名仍然拒）。所以别指望链替你拦住未覆盖的动作：
 哪个动作要判，就得有 Guard 显式认领它。

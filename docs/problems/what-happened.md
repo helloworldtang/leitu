@@ -34,6 +34,10 @@ public record ObservationEvent(
 - **形状**：横切字段全部强类型——谁、结果、耗时、token 用量是检索与聚合的键，不靠字符串键约定
 - **兜底**：空装配同样可记——事件落到 JDK 日志单行输出（失败升 WARNING）。观测维度=最小可用实现，非 Noop（分维度默认值，见 GLOSSARY）；落点抛异常被吞并大声记错，**观测不打断主流程**
 - **三支柱**：logs / metrics / traces 是同一事件流在落点（`ObservationSink` SPI）侧的三种投影——adapter 实现 sink 接日志管线 / OTel / Micrometer（待建），core 只承诺事件协议
+- **自定义落点即一个 Bean**：宿主声明一个 `ObservationSink` Bean，starter 装配记录器时自动收编（`ObjectProvider<Sink>`）——
+  无需任何配置项；测试里用同一个缝把事件收进内存列表即可断言
+- **失败调用也记事件**：事件带 `Outcome.failure("原因")` 即是失败记录；记不记、记什么由业务定，
+  但协议不区分成败通道——同一事件流、同一锚点
 - **成套答案**：本答案交付形状 + 兜底；三支柱绑定（adapter）与进程内聚合/费用报表（capability）待真实痛点升级后接入
 
 ## 三、取舍
