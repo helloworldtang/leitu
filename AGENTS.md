@@ -16,6 +16,8 @@
 4. [docs/decisions/README.md](docs/decisions/README.md) —— 决策索引：每条设计为什么是现在这样
 5. 需要动 core 设计时，再读 ADR-002 / ADR-003 / ADR-005；动 starter / adapter 层读 ADR-014 / ADR-015
 
+> 注意区分两件事：上面是**学本项目**的最小集；**写一个能跑的服务**（接入 leitu）走 [docs/INTEGRATION.md](docs/INTEGRATION.md)，它按执行顺序排，别从这五个文件开始。
+
 ## 硬约束
 
 - 术语以 [GLOSSARY](docs/GLOSSARY.md) 为准；限用词（契约 / kernel / runtime）按其限定使用，见限用词表。

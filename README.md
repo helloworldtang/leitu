@@ -32,7 +32,8 @@
 
 ## 在业务项目中接入
 
-一个 Spring Boot 业务项目，两处改动即可用起来（完整范例：[examples/spring-boot](examples/spring-boot)）：
+一个 Spring Boot 业务项目，两处改动即可用起来（完整范例：[examples/spring-boot](examples/spring-boot)）。
+**要照着做的，读[接入清单](docs/INTEGRATION.md)**——按执行顺序排的逐条清单（前置 / 依赖 / 属性表 / 建表 / 入口 / 投影 / 自检）；本节只讲**为什么**这么接：
 
 两个前置，缺一个都会在编译期踩坑：
 
