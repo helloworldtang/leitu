@@ -218,6 +218,26 @@ class DocsConsistencyTest {
                         + "。修复：补齐 Central 强制元数据四项（url / licenses / developers / scm）");
     }
 
+    /**
+     * 边界声明页引用的 ADR 编号必须真实存在（docs/SCOPE.md：把「不承诺」收拢成一处之后，
+     * 引用失效就成了边界漂移的藏身处）。
+     */
+    @Test
+    void scope页引用的ADR编号都必须真实存在() throws IOException {
+        Path scope = ROOT.resolve("docs/SCOPE.md");
+        assertTrue(Files.exists(scope), "docs/SCOPE.md 不存在——边界声明页是三类状态（永不答/留缝/待答）的唯一收拢处");
+        Matcher m = Pattern.compile("ADR-(\\d{3})").matcher(read(scope));
+        List<String> broken = new ArrayList<>();
+        while (m.find()) {
+            String num = m.group(1);
+            if (Files.list(ROOT.resolve("docs/decisions"))
+                    .noneMatch(f -> f.getFileName().toString().startsWith("ADR-" + num + "-"))) {
+                broken.add("ADR-" + num);
+            }
+        }
+        assertTrue(broken.isEmpty(), "SCOPE.md 引用了不存在的 ADR：" + broken);
+    }
+
     private static String read(Path file) throws IOException {
         return Files.readString(file);
     }
