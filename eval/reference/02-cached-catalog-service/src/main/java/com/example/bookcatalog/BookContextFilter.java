@@ -1,0 +1,53 @@
+package com.example.bookcatalog;
+
+import cn.youhuale.leitu.core.context.model.ExecutionContext;
+import cn.youhuale.leitu.core.context.model.Operator;
+import cn.youhuale.leitu.core.context.spi.ExecutionContextBinder;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+/**
+ * 入口绑定：从请求头解析操作者（探针简化版；真实项目在此接入认证体系）。
+ * 命名避开 Boot 内置 requestContextFilter Bean。
+ *
+ * <p><b>注意：这是评测探针，不是可复制的身份来源。</b>
+ * 请求头由调用方完全控制（任何人都能发 {@code X-Probe-User: admin}），
+ * 拿它当身份等于把认证交给调用方自己填。这里的用途是让评测脚本能指定"本次请求以谁的名义发起"，
+ * 与"谁真的发起"无关。真实项目必须在认证通过后用<b>已认证主体</b>构造 Operator
+ * （见 docs/problems/who-is-operating.md 与 examples/spring-boot 的开关式写法）。
+ */
+@Component
+public class BookContextFilter extends OncePerRequestFilter {
+
+    private final ExecutionContextBinder binder;
+
+    public BookContextFilter(ExecutionContextBinder binder) {
+        this.binder = binder;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws ServletException, IOException {
+        Operator operator = Operator.human(
+                header(request, "X-Probe-User", "anonymous"),
+                header(request, "X-Probe-Tenant", "-"));
+        String trace = request.getHeader("X-Probe-Trace");
+        ExecutionContext context = trace == null || trace.isBlank()
+                ? ExecutionContext.of(operator)
+                : ExecutionContext.of(operator, trace);
+        try (var scope = binder.bind(context)) {
+            chain.doFilter(request, response);
+        }
+    }
+
+    private static String header(HttpServletRequest request, String name, String fallback) {
+        String value = request.getHeader(name);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+}

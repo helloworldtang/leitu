@@ -1,5 +1,38 @@
 # 基线记录
 
+## 2026-10-26 · 任务 02 首采（leitu 侧 + 对照组）
+
+- 任务卡：[02-cached-catalog-service.md](tasks/02-cached-catalog-service.md)（leitu 侧）/
+  [02-control-no-leitu.md](tasks/02-control-no-leitu.md)（对照）。**v1 已采样；升 v1.1 只内联 Bean 清单，判据零变化。**
+- 参考解：`eval/reference/02-cached-catalog-service`（`-P eval` 进 reactor，7 条验收 + 3 条规则测试绿——
+  含「两次读取只触库一次」与租户作用域键）。
+
+### 读数并列（验收方对两侧均独立复跑）
+
+| 指标 | leitu 侧 | 对照组（无 leitu） |
+|---|---|---|
+| 完成率 | **8 / 8** | **6 / 6** |
+| 一次绿灯 | **是**（首跑 7 测试全绿） | **是**（首跑 5 测试全绿，**含学习效应**，见下） |
+| 时长 | **232 秒**（repo 自带 mvnw，无环境成本） | **555 秒**——其中 366 秒是自备 Maven 的弯路，首次测试本身 8 秒 |
+| 歧义点 | 13 条 | 11 条 |
+
+留痕：[runs/2026-10-26-task02-leitu.md](runs/2026-10-26-task02-leitu.md) / [runs/2026-10-26-task02-control.md](runs/2026-10-26-task02-control.md)。
+
+### 采样产出的三条真缺口（已修）
+
+1. **cache.md 未写装载契约**：`getOrLoad` 的 loader 抛异常（上抛不缓存）与返回 null（拒绝）只存在于 javadoc——
+   执行者只读问题页机制段，**绕开了旗舰 API 改手写 get/put**（丢掉同键只装载一次）。已补进 cache.md 二·机制；
+2. **任务卡不自包含**：验收 2 写「任务 01 点名的 8 个 Bean」而任务 01 卡不在按序读清单内——执行者只能猜。v1.1 已内联；
+3. **BOM import 下插件版本无清单**：INTEGRATION 只说了 spring-boot-maven-plugin，compiler / surefire 同样要自钉。已补。
+
+### 诚实边界
+
+- 双 n=1；执行者交叉：leitu 侧执行者仅做过 02（及一次因副本缺失的空转）；
+  **对照侧执行者与任务 01 对照组同一 agent，已踩过「Initializr 版本串」坑——本次一次绿灯含学习效应，
+  不能读成对照组天然就能首跑绿**；
+- 时长口径不对齐：对照组环境类成本（自备 Maven 366 秒）leitu 侧结构性为零（仓库自带 wrapper）——
+  这本身就是「标准答案消灭环境类猜谜」的证据，但比总时长时要注明。
+
 ## 2026-10-26 · 任务 01 对照组（不用累土，纯 Spring Boot）
 
 > 目的：回答“比不用强多少”。任务卡 [01-control-no-leitu.md](tasks/01-control-no-leitu.md)——

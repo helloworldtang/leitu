@@ -283,6 +283,7 @@
       <id>eval</id>
       <modules>
         <module>eval/reference/01-entity-crud-service</module>
+        <module>eval/reference/02-cached-catalog-service</module>
       </modules>
     </profile>
   </profiles>
