@@ -40,7 +40,11 @@ class DocsConsistencyTest {
 
     @Test
     void 文档不写死测试数量_数量由CI回答() throws IOException {
-        List<Path> docs = CatalogIntegrityTest.repoMarkdownFiles();
+        List<Path> docs = CatalogIntegrityTest.repoMarkdownFiles().stream()
+                // 运行留痕（eval/runs/）是带日期的历史档案，逐字引用当时的 surefire 输出——
+                // 判它等于逼人篡改证据。与 ADR 范围测试「带日期的历史快照不判」同理。
+                .filter(p -> !p.toString().contains("/eval/runs/"))
+                .toList();
         for (Path doc : docs) {
             Matcher m = HARDCODED_TEST_COUNT.matcher(read(doc));
             if (m.find()) {
@@ -77,7 +81,9 @@ class DocsConsistencyTest {
 
         Pattern range = Pattern.compile("ADR-001~(\\d{3})");
         Pattern dated = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
-        List<Path> docs = CatalogIntegrityTest.repoMarkdownFiles();
+        List<Path> docs = CatalogIntegrityTest.repoMarkdownFiles().stream()
+                .filter(p -> !p.toString().contains("/eval/runs/"))
+                .toList();
         int checked = 0;
         for (Path doc : docs) {
             for (String line : read(doc).split("\\R")) {
