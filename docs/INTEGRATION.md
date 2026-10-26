@@ -76,8 +76,9 @@
 不引就可能被压回 JUnit 5，测试基建直接 `NoSuchMethod`。
 
 版本一律交给 BOM，**不要手写版本号**——`leitu-parent` 同时 import 了 `spring-boot-dependencies`，Boot 的版本也从这里来。
-但 `spring-boot-maven-plugin` 的 `version` 必须自己写（BOM 不管插件），比如 `${spring-boot.version}`；
-不然 `spring-boot:run` 会报缺版本。
+但 **BOM import 不携带 pluginManagement，插件版本要自己钉**（照 leitu-parent 所用，别自己发明）：
+`maven-compiler-plugin` 3.13.0、`maven-surefire-plugin` 3.2.5、`spring-boot-maven-plugin` 4.1.1——
+不钉版本，测试生命周期与 `spring-boot:run` 都会在解析插件时碰运气。
 
 **BOM import 与 `<parent>` 是二选一，不要叠加**：`<parent>` 继承姿势自 0.2.1 起可用（0.2.0 只能 import BOM），
 顺带拿到 compiler / surefire / enforcer 的配置；**项目在 leitu 仓库之外时必须写 `<relativePath/>`**，

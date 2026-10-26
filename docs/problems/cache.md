@@ -36,7 +36,12 @@ public final class Caches {
 - **形状**：TTL 显式不藏默认——项目级默认走 `CachePolicy.ttl()`，装配处可见
 - **兜底**：进程内实现（访问序 LRU + 惰性过期 + 同键并发只装载一次），toString 自我声明「进程内无序列化——分布式替换走 adapter」
 - **插拔**：Redis 等 adapter 实现 Cache（TTL→EXPIRE、键命名空间按租户教义、值编解码是 adapter 扩展）
-- **成套答案**：租户作用域键（教义在缓存的落位）；观察 5 事件带 cache.key；Noop 兑现无害维度默认值；CachePolicy.fromConfig 兑现 config 依赖
+- **装载契约（机器判据，不是口头约定）**：`getOrLoad` 的 loader **抛异常→原样上抛、不缓存不吞**；
+  **返回 null → 直接拒绝**（缓存不存 null，「无值」语义请不缓存、每次装载）——
+  所以“读不到”场景的正确姿势是 loader 里抛业务异常：异常传到调用方，失败结果不会被缓存；
+  绕开 getOrLoad 改手写 get/put 两步会丢掉「同键并发只装载一次」，除非你自己在锁内装载；
+- **成套答案**：租户作用域键（教义在缓存的落位）；观察 5 事件带 cache.key；Noop 兑现无害维度默认值；CachePolicy.fromConfig 兑现 config 依赖；
+  缓存实例按用途命名、装配处显式分支（`policy.enabled() ? inMemory : noop`）——starter 只装配 `CachePolicy`，不自动装配泛型缓存实例（决策可见，ADR-014）
 
 ## 三、取舍
 
