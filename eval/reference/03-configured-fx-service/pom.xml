@@ -16,7 +16,7 @@
     <spring-boot.version>4.1.1</spring-boot.version>
     <leitu.version>0.2.1</leitu.version>
     <archunit.version>1.3.0</archunit.version>
-    <!-- 本模块的 TaskController 直接用了 swagger 注解（@Operation）：starter 已把 springdoc 标为
+    <!-- 本模块的 FxController 直接用了 swagger 注解（@Operation）：starter 已把 springdoc 标为
          optional，不再顺带传递，所以这里必须自己显式声明——自己用到的依赖自己声明。 -->
     <springdoc.version>3.0.3</springdoc.version>
   </properties>
@@ -48,6 +48,11 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
+    <!-- jdbc + h2 不是为了用库，而是为了让「引依赖即用」这条验收有东西可验：本任务无库表
+         （见 eval/tasks/03 的验收口径），但 JdbcAdapterAutoConfiguration 是
+         @ConditionalOnBean(DataSource.class)，容器里没有 DataSource 时 JdbcDataStoreFactory
+         根本不会出现。所以这里给的是最小内存库占位，不建表、不写数据——别把它读成
+         「03 也要配数据库」，那是照抄 02 的 pom 会得到的相反结论。 -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jdbc</artifactId>

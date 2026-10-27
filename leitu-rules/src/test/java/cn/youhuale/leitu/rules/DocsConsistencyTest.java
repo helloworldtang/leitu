@@ -256,6 +256,104 @@ class DocsConsistencyTest {
                         + "\n修复：把「即得」改成「需使用者自引」并指向 docs/INTEGRATION.md §1。");
     }
 
+    /**
+     * 参考工程（`eval/reference/`）pom 注释里点名的类必须真实存在，声称用到的注解必须真的用到。
+     *
+     * <p>由来（2026-10-28）：探针 02、03 的 pom 是照 01 抄的，注释原样写着「本模块的
+     * <b>TaskController</b> 直接用了 swagger 注解」——而 02 里是 `BookController`、03 里是
+     * `FxController`。这条错注释活了整三十天，机器全程绿灯（编译器不读注释，人又不重读注释）。
+     *
+     * <p>为什么值得一条守卫：<b>参考解是给人抄的</b>。答错一个类名，照抄的人会先去怀疑自己的
+     * 目录结构，而不是这行注释——与「文档宣称 vs 实现」同属最贵的一类红灯，只是载体是代码注释。
+     * 注释是最便宜的谎言，也是最没人复核的地方，所以把它交给机器。
+     *
+     * <p>判据两段，都从模块自身取证，不写死任何名字：
+     * <ul>
+     *   <li>注释里的 `XxxController` → 模块 `src/` 下必须真有 `XxxController.java`；</li>
+     *   <li>注释里提 `@Operation` → 模块源码必须真有该注解的 import（只说不做也算漂移）。</li>
+     * </ul>
+     * 另加 {@code checked >= 1} 自断言：注释被整段删掉时守卫会恒绿，那种「安静地失效」必须红。
+     */
+    @Test
+    void 参考工程pom注释里点名的类必须真实存在() throws IOException {
+        Path reference = ROOT.resolve("eval/reference");
+        assertTrue(Files.isDirectory(reference), "eval/reference 不存在——参考解是 eval 的对照物，不能缺失");
+
+        Pattern comment = Pattern.compile("(?s)<!--(.*?)-->");
+        Pattern controllerName = Pattern.compile("\\b([A-Z][A-Za-z0-9]*Controller)\\b");
+        List<String> broken = new ArrayList<>();
+        int checked = 0;
+
+        List<Path> modules;
+        try (Stream<Path> listed = Files.list(reference)) {
+            modules = listed.filter(Files::isDirectory).toList();
+        }
+        for (Path module : modules) {
+            Path pom = module.resolve("pom.xml");
+            if (!Files.exists(pom)) {
+                continue;
+            }
+            String pomText = read(pom);
+            boolean claimsOperation = false;
+            Matcher c = comment.matcher(pomText);
+            while (c.find()) {
+                String body = c.group(1);
+                if (body.contains("@Operation")) {
+                    claimsOperation = true;
+                }
+                Matcher n = controllerName.matcher(body);
+                while (n.find()) {
+                    String name = n.group(1);
+                    checked++;
+                    if (!moduleDeclares(module, name + ".java")) {
+                        broken.add(ROOT.relativize(pom) + " 的注释点名 " + name
+                                + "，但 " + ROOT.relativize(module) + "/src 下没有 " + name + ".java");
+                    }
+                }
+            }
+            if (claimsOperation && !moduleMentions(module, "io.swagger.v3.oas.annotations.Operation")) {
+                broken.add(ROOT.relativize(pom) + " 的注释声称用了 @Operation，但模块源码里没有该 import"
+                        + "（注释说用了、代码没用 = 同一个漂移的另一种形态）");
+            }
+        }
+
+        assertTrue(checked >= 1,
+                "没在任何参考工程 pom 的注释里解析到 Controller 名字——注释很可能被改写或删掉了，"
+                        + "此时本守卫会静默恒绿。要么恢复注释，要么改这里的取名字方式，别让它假装通过");
+        assertTrue(broken.isEmpty(),
+                "参考工程 pom 的注释与代码对不上（参考解是给人抄的，注释错会误导整条接入路径）：\n"
+                        + String.join("\n", broken));
+    }
+
+    /** 模块的 src 下是否存在指定文件名的源文件。 */
+    private static boolean moduleDeclares(Path module, String fileName) throws IOException {
+        Path src = module.resolve("src");
+        if (!Files.isDirectory(src)) {
+            return false;
+        }
+        try (Stream<Path> files = Files.walk(src)) {
+            return files.anyMatch(p -> p.getFileName().toString().equals(fileName));
+        }
+    }
+
+    /** 模块的 src 下是否有源文件包含指定文本（用于「注释声称用到某注解」的取证）。 */
+    private static boolean moduleMentions(Path module, String text) throws IOException {
+        Path src = module.resolve("src");
+        if (!Files.isDirectory(src)) {
+            return false;
+        }
+        try (Stream<Path> files = Files.walk(src)) {
+            return files.filter(p -> p.toString().endsWith(".java"))
+                    .anyMatch(p -> {
+                        try {
+                            return read(p).contains(text);
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    });
+        }
+    }
+
     /** 从 starter 的 pom 解析 optional 依赖的第一段名作为文档里的习惯称呼（真源在实现，不写死在判据里）。 */
     private static List<String> optionalDependencyTokens() throws IOException {
         String pom = read(ROOT.resolve("leitu-spring-boot-starter/pom.xml"));
