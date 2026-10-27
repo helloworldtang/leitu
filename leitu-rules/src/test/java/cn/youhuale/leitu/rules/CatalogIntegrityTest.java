@@ -84,6 +84,40 @@ class CatalogIntegrityTest {
                 "问题页四段式缺失（缺任何一段：人拿不到代价，AI 拿不到边界）：\n" + String.join("\n", broken));
     }
 
+    /**
+     * 导航完整性：answered 的问题页必须在 docs/index.md 里可达。
+     *
+     * <p>由来（2026-10-28 审查实测）：docs/index.md 停在 2026-09-21，漏了 who-is-operating 与
+     * 之后新加的 access / INTEGRATION / SCOPE 四页——而全仓没有任何守卫管它。
+     * 五件套保证"答案完整存在"，不保证"有人能从首页走到那一页"；
+     * 「可发现性」恰好是七维体检里分数最低的一项（3.0，20 个歧义点里 15 个是"写了却没被读到"）。
+     * 导航漏一个入口，效果等同于那一页不存在。
+     *
+     * <p>判据接受两种写法：相对 docs/ 的路径（`problems/x.md`）与仓库根路径（`docs/problems/x.md`）——
+     * 守的是"能不能从这里走出去"，不是"链接长什么样"。
+     */
+    @Test
+    void answered问题页必须在docs索引里可达() throws IOException {
+        Path index = ROOT.resolve("docs/index.md");
+        assertTrue(Files.exists(index), "docs/index.md 不存在——它是 docs/ 的首页导航；"
+                + "没有它，成套答案就只有内容、没有入口");
+        String body = Files.readString(index);
+        List<String> missing = new ArrayList<>();
+        for (Catalog.Entry e : entries()) {
+            if (!"answered".equals(e.status()) || e.doc() == null) {
+                continue;
+            }
+            String rel = e.doc().startsWith("docs/") ? e.doc().substring("docs/".length()) : e.doc();
+            if (!body.contains(rel) && !body.contains(e.doc())) {
+                missing.add(e.id() + "（" + e.doc() + "）未出现在 docs/index.md");
+            }
+        }
+        assertTrue(missing.isEmpty(),
+                "docs/index.md 是文档首页，漏登记就等于那一页不可达（五件套齐全也走不到）：\n"
+                        + String.join("\n", missing)
+                        + "\n修复：在 index.md 的「已答的问题页」表补一行。");
+    }
+
     @Test
     void answered条目五件套真实存在() throws IOException {
         for (Catalog.Entry e : entries()) {
