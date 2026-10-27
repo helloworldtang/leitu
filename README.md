@@ -129,7 +129,7 @@ Guard orderCreateGuard() {
 | 操作失败了，怎么向调用方交代？ | 失败交代：业务错全量、系统错脱敏＋traceId，判定链否决原样随行 | [failure-response](docs/problems/failure-response.md) |
 | 怎么缓存（可观测、可替换：进程内 / Redis）？ | 缓存：显式 TTL + LRU 上限的进程内实现，getOrLoad 装载收编（同键只装一次），租户作用域键，观察 opt-in | [cache](docs/problems/cache.md) |
 | 访问判定的成套答案 | PermissionPolicy 扩展缝 + 声明式 RBAC-lite + 预算 Guard | [access](docs/problems/access.md) |
-| 服务对外暴露了什么？ | springdoc + knife4j 接线：problem+json / traceId / 动作同源 / 端点豁免——引 starter 即得 | [api-contract](docs/problems/api-contract.md) |
+| 服务对外暴露了什么？ | springdoc + knife4j 接线：problem+json / traceId / 动作同源 / 端点豁免——**文档端点需使用者自引 springdoc**（starter 把两者标了 `optional`，见[接入清单](docs/INTEGRATION.md) §1） | [api-contract](docs/problems/api-contract.md) |
 
 更多问题与状态见[问题目录](catalog/problems.json)（`open` = 已立目待答）。
 

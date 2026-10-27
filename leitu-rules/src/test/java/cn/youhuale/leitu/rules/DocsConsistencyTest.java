@@ -193,6 +193,82 @@ class DocsConsistencyTest {
                         + "UnrecognizedPropertyException，表现为「包传上去了但构建报失败」。");
     }
 
+    /**
+     * 「文档宣称 vs 实现」一致性（2026-10-28 补）：文档不许对 <b>optional 依赖</b>作出「即得」承诺。
+     *
+     * <p>由来：README 曾写「引依赖即得 `/v3/api-docs`」，而 starter 把 springdoc 标了
+     * {@code <optional>true</optional>}——照文档做的人拿不到端点。那次只修了 README 的接入段，
+     * 「已交付的答案」表与 api-contract 问题页里同样的措辞漏改了三十天：
+     * <b>同一个错宣称在三处，修一处等于留两处</b>。而 {@code RepoBoundaryRulesTest} 只守住了
+     * "pom 必须标 optional" 那一侧，没人守"文档不许反过来宣称即得"，机器全程绿灯——
+     * 七维体检（2026-10-26 维度 4）指出的"唯一真实漏网"，解药在这里。
+     *
+     * <p>判据为什么不写死 springdoc / knife4j 两个名字：<b>真源在 starter 的 pom</b>。写在守卫里的名单，
+     * 明天加第三个 optional 依赖就悄悄变成恒绿（同「守卫自己的判据也要能失败」那条教训）。
+     * 令牌取 artifactId 的第一段（`springdoc-openapi-...` → `springdoc`），按文档里的习惯称呼叫。
+     *
+     * <p>豁免沿用本仓库既有口径「<b>带日期的是历史快照</b>」：文件名带日期（eval/runs/、reviews/ 体检报告、
+     * prechecks/）整份不判；baselines.md 是当时读数的登记册，逐字引用旧宣称正是它的职责；
+     * 其余文件里<b>行内带日期</b>的句子不判（ROADMAP 叙述那条漂移史的部分）。
+     */
+    @Test
+    void 文档不得宣称optional依赖引starter即得() throws IOException {
+        List<String> optionalTokens = optionalDependencyTokens();
+        assertTrue(!optionalTokens.isEmpty(),
+                "leitu-spring-boot-starter/pom.xml 里没解析到任何 <optional>true</optional> 依赖——"
+                        + "要么 optional 声明被删了（应当先过 ADR-014 的取舍），要么本守卫的解析式失效了；"
+                        + "两种都必须处理，不能让守卫静默变成恒绿");
+
+        Pattern datedFile = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+        Pattern datedLine = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+        List<String> broken = new ArrayList<>();
+        int mentioned = 0;
+        for (Path doc : CatalogIntegrityTest.repoMarkdownFiles()) {
+            String name = doc.getFileName().toString();
+            if (datedFile.matcher(name).find() || name.equals("baselines.md")) {
+                continue;   // 带日期的留痕档案 / 当时的读数登记册（略）
+            }
+            String[] lines = read(doc).split("\\R");
+            for (int i = 0; i < lines.length; i++) {
+                String line = lines[i];
+                boolean hit = false;
+                for (String token : optionalTokens) {
+                    hit |= line.contains(token);
+                    if (line.contains("即得") && !datedLine.matcher(line).find() && line.contains(token)) {
+                        broken.add(ROOT.relativize(doc) + ":" + (i + 1) + " 宣称「" + token + "」引依赖/引 starter 即得"
+                                + "（原文：" + line.trim() + "）");
+                    }
+                }
+                if (hit) {
+                    mentioned++;
+                }
+            }
+        }
+        assertTrue(mentioned >= 1,
+                "全仓 markdown 里没有一行提到 " + optionalTokens + "——文档令牌很可能改了叫法"
+                        + "（判据却按 artifactId 首段取），守卫会变成恒绿。要改就改这一处的取令牌方式，"
+                        + "别把pom里的坐标改成迁就判据");
+        assertTrue(broken.isEmpty(),
+                "文档对 optional 依赖作出了「即得」承诺——"
+                        + "optional 的意思是「不替使用者决定要不要引」，宣称即得会让照做的人拿到一个不存在的端点，"
+                        + "且他会先怀疑自己而不是文档（最贵的一类红灯：方向是文档在主动误导）：\n"
+                        + String.join("\n", broken)
+                        + "\n修复：把「即得」改成「需使用者自引」并指向 docs/INTEGRATION.md §1。");
+    }
+
+    /** 从 starter 的 pom 解析 optional 依赖的第一段名作为文档里的习惯称呼（真源在实现，不写死在判据里）。 */
+    private static List<String> optionalDependencyTokens() throws IOException {
+        String pom = read(ROOT.resolve("leitu-spring-boot-starter/pom.xml"));
+        Matcher m = Pattern.compile("<artifactId>([^<]+)</artifactId>\\s*<optional>\\s*true\\s*</optional>")
+                .matcher(pom);
+        List<String> tokens = new ArrayList<>();
+        while (m.find()) {
+            String artifact = m.group(1).trim();
+            tokens.add(artifact.contains("-") ? artifact.substring(0, artifact.indexOf('-')) : artifact);
+        }
+        return tokens;
+    }
+
     private static int compareVersions(String a, String b) {
         int[] x = versionParts(a);
         int[] y = versionParts(b);

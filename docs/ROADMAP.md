@@ -68,7 +68,7 @@
 **最有价值的输出不是四个数字，是 20 条歧义点的归因**（逐条见 [eval/baselines.md](../eval/baselines.md) 的「歧义点归因」节）。
 逐条回查文档后：**15 条不是文档缺失，而是文档已写却没被找到**——信息散落在
 「问题页 + README 接入段 + 金样本」三处，新 agent 得自己拼。其中 1 条是**真漂移**：
-README 宣称「引依赖即得 `/v3/api-docs`」，而 starter 把 springdoc 标了 `optional`——
+README 曾宣称（2026-09-27 前）「引依赖即得 `/v3/api-docs`」，而 starter 把 springdoc 标了 `optional`——
 不额外引依赖根本得不到端点，这是本次唯一一处「文档主动误导」，已随本次修复。
 
 **后续（不阻塞收官）**：

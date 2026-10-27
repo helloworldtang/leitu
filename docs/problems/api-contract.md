@@ -21,7 +21,9 @@ API 文档是业务开发链的最后一环，也是漂移最显眼的一环：�
 ```
 
 - **形状**：OpenAPI 3 标准描述 + springdoc 注解声明 + knife4j UI 呈现——全部消费业界标准，本库零自有约定
-- **兜底**：引 starter 依赖即得开箱文档（已交付：springdoc + knife4j 随 starter 装配，条件激活）
+- **兜底**：接线随 starter 默认装配，但 springdoc + knife4j 被标为 `optional` 且条件激活——
+  **要真正得到 `/v3/api-docs` 与 `/doc.html`，使用者得自己引 springdoc**（见[接入清单](../INTEGRATION.md) §1）。
+  这是「不替使用者决定要不要几十 MB 的 Swagger UI 全家桶」的取舍，依据见 ADR-014
 - **成套答案**：leitu 的增值在接线四点（schema 对齐 / traceId / 动作同源 / 端点豁免），见 ADR-013
 
 ## 三、取舍
