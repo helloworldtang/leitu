@@ -2,19 +2,31 @@
 
 任务卡版本：**v1**（2026-10-27 首次发布）。目标答案面：**config-source + what-happened**（前两条任务未覆盖的两个面），叠加任务 01 的管道行为。
 
+**v2**（2026-10-28）：只改阅读面，判据一字未动——金样本从「整目录」改为点名到文件（`pom.xml` + `src/main/**`），
+并把上下文预算写进卡上（≤ 4.8 万字符，由 `EvalContextBudgetTest` 守）。首采时这张卡的按序读实测
+**6.2 万字符**，其中金样本整目录占 60%（含三个金样本自己的测试——它们不是「照写姿势」的必需品）。
+**v2 未重新采样**：v1 的 8/8、142 秒、14 条歧义只属于 v1 的阅读面，与 v2 不可直接比较。
+
 ## 目标
 
 在空目录创建一个可运行的 Spring Boot 汇率换算服务：`GET /fx/convert?from=USD&to=CNY&amount=100`，汇率**从配置来**，每次调用**记录观测事件**，并满足下面验收的行为。
 
 ## 按序读（只读，仓库内；顺序即执行顺序）
 
+上下文预算：**≤ 4.8 万字符**（编号项全文合计，上界口径；机器守卫 `EvalContextBudgetTest`，超了构建即红）。
+
 1. **`docs/INTEGRATION.md` 全文**——接入清单，按执行顺序排；
-2. 本任务涉及的六个问题页，**只读「二、机制」与「四、边界」两段**：
-   **config-source / what-happened** / who-is-operating / allow-or-not / failure-response / api-contract；
-3. `examples/spring-boot` 与 `examples/what-happened`、`examples/config-source` **整目录**——照写姿势，不要发明；
-4. 需要查状态与边界时再看 `catalog/problems.json`、`docs/GLOSSARY.md`。
+2. 本任务涉及的六个问题页，**只读「二、机制」与「四、边界」两段**（按段读；预算按全文上界计）：
+   `docs/problems/config-source.md`、`docs/problems/what-happened.md`、`docs/problems/who-is-operating.md`、
+   `docs/problems/allow-or-not.md`、`docs/problems/failure-response.md`、`docs/problems/api-contract.md`；
+3. 金样本 **`examples/spring-boot/pom.xml`** + **`examples/spring-boot/src/main/**`**、
+   **`examples/what-happened/pom.xml`** + **`examples/what-happened/src/main/**`**、
+   **`examples/config-source/pom.xml`** + **`examples/config-source/src/main/**`**——照写姿势，不要发明。
 
 不得阅读：`eval/reference/**`（参考解）、`eval/runs/**`、`eval/baselines.md`。
+
+需要查状态与边界时再看 `catalog/problems.json` 与 `docs/GLOSSARY.md`；需要断言风格时再看金样本的
+`src/test/**`——两者都是**按需**，故意不编号、不计入预算（编号项才是必读面）。
 
 ## 验收（全过才算完成）
 

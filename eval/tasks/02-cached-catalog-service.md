@@ -3,19 +3,29 @@
 任务卡版本：**v1.1**（2026-10-26）。v1 已采样；v1.1 唯一变化：把验收 2 引用的 Bean 清单内联（判据零变化）。
 目标答案面：data-access + **cache** + failure-response + api-contract（在任务 01 的管道之上，多压一层缓存语义）。
 
+**v2**（2026-10-28）：只改阅读面，判据一字未动——金样本从「整目录」改为点名到文件（`pom.xml` + `src/main/**`），
+并把上下文预算写进卡上（≤ 4.7 万字符，由 `EvalContextBudgetTest` 守）。整目录会把金样本自己的测试
+也算进必读，而「照写姿势」要的是 main 里的写法、不是它的断言风格。**v2 与 v1.1 的读数不可直接比较**。
+
 ## 目标
 
 在空目录创建一个可运行的 Spring Boot 业务服务：图书实体（业务字段 ≥2）+ JDBC 存取 + 创建 / 读取两个端点，**读取走缓存**，并满足下面验收的行为。
 
 ## 按序读（只读，仓库内；顺序即执行顺序）
 
+上下文预算：**≤ 4.7 万字符**（编号项全文合计，上界口径；机器守卫 `EvalContextBudgetTest`，超了构建即红）。
+
 1. **`docs/INTEGRATION.md` 全文**——接入清单，按执行顺序排；
-2. 本任务涉及的六个问题页，**只读「二、机制」与「四、边界」两段**：
-   data-access / **cache** / allow-or-not / who-is-operating / failure-response / api-contract；
-3. `examples/spring-boot` 与 `examples/cache` **整目录**——照写姿势，不要发明；
-4. 需要查状态与边界时再看 `catalog/problems.json`、`docs/GLOSSARY.md`。
+2. 本任务涉及的六个问题页，**只读「二、机制」与「四、边界」两段**（按段读；预算按全文上界计）：
+   `docs/problems/data-access.md`、`docs/problems/cache.md`、`docs/problems/allow-or-not.md`、
+   `docs/problems/who-is-operating.md`、`docs/problems/failure-response.md`、`docs/problems/api-contract.md`；
+3. 金样本 **`examples/spring-boot/pom.xml`** + **`examples/spring-boot/src/main/**`** 与
+   **`examples/cache/pom.xml`** + **`examples/cache/src/main/**`**——照写姿势，不要发明。
 
 不得阅读：`eval/reference/**`（参考解）、`eval/runs/**`、`eval/baselines.md`。
+
+需要查状态与边界时再看 `catalog/problems.json` 与 `docs/GLOSSARY.md`；需要断言风格时再看金样本的
+`src/test/**`——两者都是**按需**，故意不编号、不计入预算（编号项才是必读面）。
 
 ## 验收（全过才算完成）
 
