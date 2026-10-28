@@ -50,6 +50,8 @@
 ## 评测与工具（占位，规划中）
 
 - `eval/`：AI 生产力基准（**种子已立**：协议 + 第一条标准任务 + 参考解 + 基线记录）——标准任务集 + 完成率/时长/一次绿灯率；规模化待行
-- 最小上下文规格：一个全新 agent 学会本项目、正确写出第一个答案所需的最小阅读集（目标 ≤5 文件）
+- 最小上下文规格：分两件事——**学会本项目**：上面那个 ≤5 文件的最小学习集；**写出第一个答案**：任务卡的「按序读」，
+  按**字符预算**记（不按文件数：一条答案一页问题页是正确的，按文件数记账等于惩罚分页），预算写在卡上、
+  由 `EvalContextBudgetTest` 守（目录即红 / 超预算即红 / 无声明即红）
 - 架构状态导出：catalog → 4R 四图（Rank 双平面 / Role 职责 / Relation 依赖图 / Rule 规则清单），入口 `java scripts/ExportArchitecture.java`
 - AI 消费入口：`skills/leitu/SKILL.md`（对外路由表）+ `tools/cli`（`leitu list/explain`，零依赖只读，**不进 Maven reactor**、不参与 `./mvnw verify`）。守门人 `node tools/cli/check-skill.mjs` 四条断言——SKILL.md 引用路径 / answered 条目覆盖 / npm 快照 / **SKILL.md 里的库版本 == 根 pom 的 `<version>`**，任何一条漂移即红（也接在 CI 最前面）。改 catalog 或改版本后跑一遍。**CLI 自己的版本号不在此约束内**——它是无状态工具，用的人一律 `npx leitu-cli@latest`，与库版本各走各的 tag。
