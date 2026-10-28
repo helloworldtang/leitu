@@ -164,6 +164,15 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>3.2.5</version>
         </plugin>
+        <!-- boot 插件也托管在这里，而不是只写在接入文档里让使用者自己钉：
+             pluginManagement 不随 BOM import 传播，但随 <parent> 继承传播——
+             父 pom 不管它时，Maven 只能去仓库 metadata 拿最新版。
+             2026-10-28 采样实测：`<parent>` 姿势下解析到 4.2.0-RC1（含 RC），一次看不见的版本漂移。 -->
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot.version}</version>
+        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -178,15 +187,19 @@
               <goal>enforce</goal>
             </goals>
             <configuration>
+              <!-- message 必须写在**规则里**，不能写在 configuration 顶层：enforce mojo 没有
+                   message 参数，顶层写会被静默忽略（3.5.0 只刷一行「Parameter 'message' is unknown」），
+                   于是这段修好的修复说明永远不会显示——2026-10-28 采样抓到，属静默失效的引导文案。 -->
               <rules>
                 <requireJavaVersion>
                   <version>[21,)</version>
+                  <message>leitu 需要 JDK 21+（唯一的机器依赖）。修复：macOS 执行 export JAVA_HOME="$(/usr/libexec/java_home -v 21)"；Linux 用 SDKMAN 安装并设置 JAVA_HOME；CI 由 setup-java 提供。构建命令：./mvnw verify</message>
                 </requireJavaVersion>
                 <requireMavenVersion>
                   <version>[3.9,)</version>
+                  <message>leitu 需要 Maven 3.9+。修复：直接用仓库自带的 ./mvnw（wrapper 自选版本，不依赖系统 Maven）。</message>
                 </requireMavenVersion>
               </rules>
-              <message>leitu 需要 JDK 21+ 与 Maven 3.9+（唯一的机器依赖）。修复：macOS 执行 export JAVA_HOME="$(/usr/libexec/java_home -v 21)"；Linux 用 SDKMAN 安装并设置 JAVA_HOME；CI 由 setup-java 提供。构建命令：./mvnw verify</message>
             </configuration>
           </execution>
         </executions>
