@@ -31,7 +31,8 @@ public interface ConfigReader {                  // Port：沿源链现查
 - **形状**：String + 类型化助手（int/long/boolean/Duration/enum 带默认值）；缺失→默认值是正常态，有值但解析失败→错误即教程（IAE 带 key、源名、期望格式与示例——**永不带值**）
 - **兜底**：`standard()` 三源——系统属性 → 环境变量 → classpath `leitu.properties`（对齐 Spring Environment 标准优先级；文件缺失=空源是常态）；环境源对点分键同时查归一形（datasource.url → DATASOURCE_URL）
 - **插拔**：配置中心（Nacos/Apollo）= adapter 实现 `ConfigSource` 插入；`of(源…)` 参数顺序即优先级，toString 印出全链；读时求值无订阅——变更传播=宿主重建组件
-- **成套答案**：starter 装配与配置中心 adapter 待真实痛点接入（本答案交付形状 + 兜底）
+- **成套答案（引了 starter 就自动装配，`LeituConfigAutoConfiguration`）**：装配出的 `ConfigReader` **不是** `standard()` 那三源，而是四层——`spring-overrides`（命令行 / 系统属性 / 系统环境变量）→ 宿主声明的 `ConfigSource` Bean（配置中心，运行期事实源）→ `spring-files`（`application.properties` / yml）→ `leitu.properties`。所以业务配置写 `application.properties` 就生效，且**优先于** `leitu.properties`；接入表见 [INTEGRATION §2](../INTEGRATION.md)。配置中心 adapter 仍待真实痛点接入
+- **为什么装配成四层而不是把整条 Environment 摆链头**：Spring 的 Environment 是一条链里装着两种东西——覆盖层（命令行/系统属性/环境变量）与文件层（yml/properties）。整条摆链头，本地 yml 就压过配置中心；拆开后覆盖层高于配置中心、文件层低于它，两侧都对
 
 ## 三、取舍
 

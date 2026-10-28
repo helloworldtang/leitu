@@ -72,13 +72,26 @@
 ```
 
 测试侧另加 `spring-boot-starter-test`（Boot 4 的 MockMvc 在 `spring-boot-webmvc-test`，两个都要）。
+**`@AutoConfigureMockMvc` 自 Boot 4 起换了包**：`org.springframework.boot.webmvc.test.autoconfigure`——
+不再是 Boot 3 的 `org.springframework.boot.test.autoconfigure.web.servlet`。按旧肌肉记忆写会编译不过，
+且 IDE 补全不给提示（连续两轮采样都卡在这里）。
 **Boot 4 宿主还需在 `dependencyManagement` 里 import `junit-bom` 6.x**——根 BOM 自 0.2.1 起不再携带它，
 不引就可能被压回 JUnit 5，测试基建直接 `NoSuchMethod`。
 
 版本一律交给 BOM，**不要手写版本号**——`leitu-parent` 同时 import 了 `spring-boot-dependencies`，Boot 的版本也从这里来。
-但 **BOM import 不携带 pluginManagement，插件版本要自己钉**（照 leitu-parent 所用，别自己发明）：
-`maven-compiler-plugin` 3.13.0、`maven-surefire-plugin` 3.2.5、`spring-boot-maven-plugin` 4.1.1——
-不钉版本，测试生命周期与 `spring-boot:run` 都会在解析插件时碰运气。
+插件按你选的姿势分两种，**别混着抄**（混着抄不报错，只是噪音）：
+
+- **BOM import 姿势**：`pluginManagement` 不随 import 传播，**三个都要自己钉**（照 leitu-parent 所用，别自己发明）：
+  `maven-compiler-plugin` 3.13.0、`maven-surefire-plugin` 3.2.5、`spring-boot-maven-plugin` 4.1.1；
+- **`<parent>` 姿势**：compiler / surefire / enforcer 随继承而来，**只有 `spring-boot-maven-plugin` 仍要自钉**——
+  0.2.1 的父 pom 里没托管它（已在本仓修正，随下一个版本发布；那之后这一行也可省）。
+
+不钉会怎样：`spring-boot:run` 与测试生命周期都会在解析插件时碰运气。`<parent>` 姿势下实测解析到
+`4.2.0-RC1`（含 RC）——一次看不见的版本漂移，正是「碰运气」的样子。
+
+**要 `java -jar` 跑，还得自己绑 `repackage`**：父工程不是 `spring-boot-starter-parent`，`repackage` 不会自动挂到
+`package` 阶段——不绑时 `mvn package` 出的是瘦 jar（`BOOT-INF/` 不存在），`java -jar` 起不来。
+只跑 `mvn test` 与 `spring-boot:run` 的人不需要它。
 
 **BOM import 与 `<parent>` 是二选一，不要叠加**：`<parent>` 继承姿势自 0.2.1 起可用（0.2.0 只能 import BOM），
 顺带拿到 compiler / surefire / enforcer 的配置；**项目在 leitu 仓库之外时必须写 `<relativePath/>`**，
@@ -86,7 +99,9 @@
 用 `<parent>` 时**记得显式写自己的 `<version>`**——不写就继承 leitu 的 0.2.1，自己的服务顶着库的版本号，
 发布时才知道有多困惑。
 
-## 2. 配置属性（框架只读这三个）
+## 2. 配置：框架消费哪些键、你拿到的 `ConfigReader` 读哪几层
+
+**框架自己只消费下面三个键**——你自己的业务键（`fx.rate.USD-CNY`、`pay.timeout`……）随便起，走同一个 `ConfigReader` 读：
 
 | 键 | 默认 | 作用 |
 |---|---|---|
@@ -94,9 +109,25 @@
 | `leitu.openapi.version` | `0.0.0` | 文档里的 API 版本——**填你自己的服务版本**（如 `0.1.0`），与 leitu 库版本无关 |
 | `leitu.openapi.description` | 内置一句 | 文档描述 |
 
-配置来源固定三源兜底：**系统属性 → 环境变量 → `leitu.properties`**，读时求值；秘密（凭据）走 SPI，
-不进普通配置、不落日志。属性只在引了 springdoc 且自动配置加载后生效。
-**`leitu.properties` 不必建**——文件不存在是常态（空源），要建就放 classpath 根。
+能力层还有自己的一组键（本表不列全，指过去）：缓存 `cache.enabled` / `cache.max-size` / `cache.ttl`，
+由 `CachePolicy` 读，键名与语义见 [cache](problems/cache.md)——别因为本表只列 OpenAPI 就以为缓存不读配置。
+
+### 引了 starter 之后，`ConfigReader` Bean 的源链（优先级从高到低）
+
+| 序 | 源 | 是什么 |
+|---|---|---|
+| 1 | `spring-overrides` | Spring 的**覆盖层**：命令行参数 / 系统属性 / 系统环境变量。`@SpringBootTest(properties = …)` 也落在这一层 |
+| 2 | 你声明的 `ConfigSource` Bean | 配置中心（Nacos/Apollo）适配器插在这里——**运行期事实源** |
+| 3 | `spring-files` | `application.properties` / `application-<profile>.properties` / yml |
+| 4 | `leitu.properties` | classpath 根的老式文件，可有可无 |
+
+读时求值；秘密（凭据）走 SPI，不进普通配置、不落日志。**`leitu.properties` 不必建**——文件不存在是常态（空源）。
+OpenAPI 那三个键只在引了 springdoc 且自动配置加载后生效。
+
+> **这一节曾经是错的**：原文只写 `standard()` 的三源，而 starter 装配的是上面四层——2026-10-28 的采样里，
+> 做「配置驱动」任务的执行者照文档写不出来，**靠反编译 jar 才确认**。按原文你会以为业务配置必须写进
+> `leitu.properties`，实际写 `application.properties` 也生效，且因层序更高而**优先**。
+> 为什么拆两层而不是把整条 Environment 摆链头：摆链头时本地 yml 会压过配置中心。
 
 依据：[config-source](problems/config-source.md)。
 
@@ -133,6 +164,9 @@ Boot 默认不跑，得自己上迁移工具或显式开 `spring.sql.init.mode=a
 2. **没接认证体系时**：照 `examples/spring-boot` 的 `DemoContextFilter` 走演示开关
    `demo.trust-request-headers=true`（读 `X-Demo-User` / `X-Demo-Tenant`，可选 `X-Demo-Trace`），**默认是关的**。
    **开关放测试/演示 profile，不要放进主配置**——放主配置等于把它带进生产。
+   金样本自己就是这么摆的：开关在 `src/main/resources/application-demo.properties`，主配置里只留一句指路注释；
+   `SmokeTest` 用 `@ActiveProfiles("demo")` 激活它，`DemoIdentityDefaultTest` 反过来把开关压成 false 守住失败方向。
+   跟着跑：`./mvnw -pl examples/spring-boot spring-boot:run -Dspring-boot.run.profiles=demo`。
    关着时一律匿名，而匿名不参与角色判定 → 得到 403，失败方向在安全侧；
 3. **请求头不能当身份来源进生产**——调用方可以任意伪造，那等于把门禁拆了。
 
@@ -226,7 +260,14 @@ Guard orderCreateGuard() {
 
 依据：[api-contract](problems/api-contract.md)。
 
-## 8. 自检（跑一次构建 + 打三个请求）
+## 8. 自检（跑一次构建、起服务、打三个请求）
+
+**先起服务再 curl**——文档从前只给 `mvn test` 与 curl，不给启动命令，执行者只能自己猜（这条在 2026-10-26
+与 2026-10-28 两轮采样里各被登记了一次）。身份来自请求头，所以**只有 demo profile 才认得 `X-Demo-User`**：
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=demo      # 默认 8080；换端口加 -Dspring-boot.run.arguments=--server.port=18080
+```
 
 ```bash
 mvn test                                   # 首跑即绿才算「一次绿灯」；至少一个测试盖住下面三条行为，

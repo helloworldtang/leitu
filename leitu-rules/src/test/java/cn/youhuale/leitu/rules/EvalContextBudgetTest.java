@@ -50,13 +50,19 @@ class EvalContextBudgetTest {
             Pattern.compile("`((?:docs|examples|catalog|skills|scripts|tools|leitu-[a-z-]+)/[^`\\s]*)`");
 
     /**
-     * 卡上自己声明的预算，单位「万字符」——与 baselines 的读数同口径，免得换算出错。
+     * 卡上自己声明的预算，单位「万 Unicode 字符」——与 baselines 的读数同口径，免得换算出错。
      *
      * <p>判据<b>锚到行首的「上下文预算：」</b>，不是搜全卡的任意一处：卡的版本说明里也会出现
      * 「（≤ 4.8 万字符，由守卫守）」这类句子，用裸 {@code find()} 会先抓到那一处——
      * 于是改卡内真正的声明不生效，守卫对着旧数字恒绿（第一次自测就踩到了这个坑）。
+     *
+     * <p><b>量纲必须是 Unicode 字符（{@code wc -m}），不是字节</b>：本守卫按 {@code String.length()} 计价，
+     * 而中文一字约 3 字节。2026-10-28 的采样里执行者专门点出这一处——卡上只写「万字符」时，
+     * 按字节算它自报的上界当场就越线。所以卡面现在写「万 Unicode 字符」，这里的正则也接受这个写法：
+     * 量纲含糊的预算不是约束，是一句可以两头解释的话。
      */
-    private static final Pattern BUDGET = Pattern.compile("(?m)^上下文预算：\\s*[^\\n]*?≤\\s*([\\d.]+)\\s*万字符");
+    private static final Pattern BUDGET =
+            Pattern.compile("(?m)^上下文预算：\\s*[^\\n]*?≤\\s*([\\d.]+)\\s*万\\s*(?:Unicode\\s*)?字符");
 
     /** 单卡硬上限：4.8 万字符左右的卡已覆盖「接入清单 + 6 个问题页 + 4 个金样本」的完整必读面。 */
     private static final double HARD_CAP_WAN = 5.0;

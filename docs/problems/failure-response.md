@@ -37,6 +37,20 @@ public final class FailureNotices {                // 工厂（model 静态方�
 - **兜底**：工厂即安全默认——business 全量；fromThrowable 脱敏（异常消息与类名不出端，全量细节走观测通道）
 - **对齐**：fromDecision 保留理由与重试语义；allow 进来=装配错误大声失败
 - **成套答案**：HTTP problem+json（RFC 9457）投影已在 adapter-web 落地——kind→4xx/5xx、**type URN 化**（`urn:leitu:problem:<点分机读标识>`，见下）、retry/traceId/attributes→扩展成员、status/instance 由传输层补；消息队列 / RPC / CLI 同一本体各自投影
+**HTTP 状态码怎么定**（adapter-web 的 `ProblemJson.statusOf`，优先级从上到下）：
+
+| 序 | 依据 | 状态码 |
+|---|---|---|
+| 1 | `attributes["http.status"]` 显式指定（只收 400–599；非法降级为兜底码并记一条观测事件） | 该值 |
+| 2 | `Kind.SYSTEM` | 500 |
+| 3 | `type == urn:leitu:problem:guard.denied` | 403 |
+| 4 | 其余（`Kind.BUSINESS`） | 400 |
+
+两条推论，接入时必须知道：① **选 400 还是 404 是你的决定**（用 `attributes` 覆盖），但一个服务只能一种——
+否则同一个「读不到」在两条路径上给出两种交代，消费方就得分别处理；② **`guard.denied` 是保留 type**——
+否决的 403 由这个字符串特判得来，业务侧若自造一个同名 `type`，会意外拿到 403。这张表以前只在代码里，
+两轮采样各有执行者靠反编译/实测才确认。
+
 - **为什么 type 必须 URN 化**：RFC 9457 §4.2.1 规定 type 是 URI 引用；裸点分字符串 `order.not-found` 会被当成相对路径解析到当前站点下，消费方按 URI 去拉文档时跑到错的地址。URN 说的是「这是个名字，不是地址」——不承诺解引用结果，也不随部署路径变化；为此 core 侧把 type 字符集收口到 `[A-Za-z0-9]+([._-][A-Za-z0-9]+)*`，构造期即校验
 
 ## 三、取舍
