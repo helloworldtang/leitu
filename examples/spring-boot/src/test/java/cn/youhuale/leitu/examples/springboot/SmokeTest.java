@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,8 +26,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 端到端冒烟金测试：引依赖即用——装配就位 / 真库读写 / 失败投影 / 文档端点。
  * starter、adapter、capability 或 core 的任何改动让这里变红，即破坏了「引依赖即用」的承诺。
+ *
+ * <p>本测试走 {@code demo} profile：身份的来源（信任 {@code X-Demo-User} 请求头）只在
+ * {@code application-demo.properties} 里，主配置不含它——见 {@link DemoIdentityDefaultTest} 守的反方向。
  */
 @SpringBootTest
+@ActiveProfiles("demo")
 @AutoConfigureMockMvc
 class SmokeTest {
 

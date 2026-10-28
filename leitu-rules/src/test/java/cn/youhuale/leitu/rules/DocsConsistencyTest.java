@@ -415,6 +415,89 @@ class DocsConsistencyTest {
         assertTrue(broken.isEmpty(), "SCOPE.md 引用了不存在的 ADR：" + broken);
     }
 
+    /**
+     * 金样本的主配置不得出现 INTEGRATION 红线里点名的键。
+     *
+     * <p>由来：{@code examples/spring-boot/src/main/resources/application.properties} 里曾写着
+     * {@code demo.trust-request-headers=true}，而 INTEGRATION 第 4 节明写「开关放测试/演示 profile，
+     * 不要放进主配置——放主配置等于把它带进生产」，并在「常见踩坑」里把它列为红线。
+     * 金样本是「照写姿势」的唯一范本，它示范的却是自己明令禁止的事：照抄的人会把「请求头当身份」
+     * 那段代码路径带进生产 classpath，只靠一个 {@code @Value} 开关关着——线上手滑设成 true 就没门禁了。
+     * 2026-10-28 的三条独立采样里两条各自撞上这处，其中一条直接判为「自相矛盾」。
+     *
+     * <p><b>判据不写死键名</b>：红线清单的真源在 INTEGRATION 的「常见踩坑」小节，本守卫每次现取。
+     * 写死的话，下次新增一条红线守卫照样绿——那正是它要防的东西（同「守卫自己的判据也要能失败」）。
+     *
+     * <p>只扫 {@code application.properties}（主配置）。{@code application-<profile>.properties} 是正解，不判。
+     */
+    @Test
+    void 金样本主配置不得出现INTEGRATION红线里的键() throws IOException {
+        List<String> forbidden = redLineKeysKeptOutOfMainConfig();
+        assertTrue(!forbidden.isEmpty(),
+                "没能从 docs/INTEGRATION.md 的「常见踩坑」里解析出任何「…放主配置」的红线键——"
+                        + "要么红线被删了（应当先过 ADR），要么本守卫的解析式与文档写法脱节了。"
+                        + "两种都必须处理：让守卫静默变恒绿，比不守更危险");
+
+        List<String> broken = new ArrayList<>();
+        int scanned = 0;
+        try (Stream<Path> examples = Files.list(ROOT.resolve("examples"))) {
+            for (Path module : examples.toList()) {
+                Path main = module.resolve("src/main/resources/application.properties");
+                if (!Files.exists(main)) {
+                    continue;
+                }
+                scanned++;
+                String[] lines = read(main).split("\\R");
+                for (int i = 0; i < lines.length; i++) {
+                    String line = lines[i].trim();
+                    if (line.startsWith("#")) {
+                        continue;   // 注释里提一句「它不在这里」是允许的，那正是我们想要的写法
+                    }
+                    for (String key : forbidden) {
+                        if (line.startsWith(key + "=") || line.startsWith(key + " =")) {
+                            broken.add(ROOT.relativize(main) + ":" + (i + 1) + " 把红线键 `" + key + "` 放进了主配置");
+                        }
+                    }
+                }
+            }
+        }
+        assertTrue(scanned > 0,
+                "examples/*/src/main/resources/application.properties 一个都没扫到——这个守卫没在守任何东西");
+        assertTrue(broken.isEmpty(),
+                "金样本示范了 INTEGRATION 明令禁止的事（它是「照写姿势」的唯一范本，"
+                        + "照抄的人会把这段代码路径带进生产 classpath）：\n" + String.join("\n", broken)
+                        + "\n修复：把该键挪进 src/main/resources/application-<profile>.properties，"
+                        + "并让需要它的测试用 @ActiveProfiles 激活同名 profile。");
+    }
+
+    /** 从 INTEGRATION「常见踩坑」小节取红线键：行内既提到「主配置」、又有反引号包着的键。 */
+    private static List<String> redLineKeysKeptOutOfMainConfig() throws IOException {
+        String doc = read(ROOT.resolve("docs/INTEGRATION.md"));
+        List<String> keys = new ArrayList<>();
+        boolean inPitfalls = false;
+        for (String line : doc.split("\\R")) {
+            if (line.startsWith("## ")) {
+                inPitfalls = line.contains("踩坑");
+                continue;
+            }
+            if (!inPitfalls || !line.contains("主配置")) {
+                continue;
+            }
+            Matcher m = Pattern.compile("`([a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)+)`").matcher(line);
+            while (m.find()) {
+                String key = m.group(1);
+                // 文件名不是配置键（`application-demo.properties`）：红线说的是「把这个键放主配置」这个动作
+                if (key.endsWith(".properties") || key.endsWith(".yml") || key.endsWith(".md")) {
+                    continue;
+                }
+                if (!keys.contains(key)) {
+                    keys.add(key);
+                }
+            }
+        }
+        return keys;
+    }
+
     private static String read(Path file) throws IOException {
         return Files.readString(file);
     }
