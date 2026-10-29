@@ -37,24 +37,42 @@
      演示开关走 profile 而非主配置、03 在参考解本就正确的两处仍产生歧义），判断未抄袭——
      但这是事后审计，不是事前机制。**下轮补回物理剔除**。
 
-### 三条独立采样交叉指认的文档缝（按严重度）
+### 三条独立采样交叉指认的文档缝（按严重度）——**8 条已全部处置**（2026-10-29 复核闭环）
 
-| # | 缝 | 命中 | 判据 |
-|---|---|---|---|
-| 1 | **金样本示范了自己明令禁止的事**：`examples/spring-boot/src/main/resources/application.properties:11` 有 `demo.trust-request-headers=true`，而 `INTEGRATION.md:135` 写「放主配置等于把它带进生产」并在 §262 列为红线 | 01(A2 自相矛盾) / 03(工单 7) | 已核对原文，**确认为自相矛盾** |
-| 2 | **`ConfigReader` Bean 的真实源链没有文档**：文档写 `standard()` 三源，starter 装配的是四段链（spring-overrides → 宿主 ConfigSource → spring-files → leitu.properties） | 03(歧义 1，反编译才确认) | 已核对 `LeituConfigAutoConfiguration` 构造顺序与 `LeituStarterWiringTest.Environment里的键_优先于三源()`；根因是 `config-source.md` 的「成套答案」仍停在 0.2.0「starter 待接入」 |
-| 3 | **失败投影的 kind→status 映射表缺失**（BUSINESS→400 / `guard.denied`→403 / SYSTEM→500 / `attributes["http.status"]` 可覆盖）；`guard.denied` 还是**保留 type**（业务侧写同名 `type` 会意外拿到 403） | 01(工单 4) / 02(歧义 9、工单 9) / 03(工单 5) | 三条全中 |
-| 4 | **`spring-boot-maven-plugin` 在 `<parent>` 姿势下无人托管**，实测解析到 `4.2.0-RC1`（含 RC）；`repackage` 也不自动绑，`mvn package` 出瘦 jar | 01(A3/A4) / 03(工单 3、9) | 根 pom 的 `pluginManagement` 只有 compiler 与 surefire，已核对 |
-| 5 | **`INTEGRATION` §2 标题「框架只读这三个」误导**：表里只有 `leitu.openapi.*`，而 `CachePolicy.fromConfig` 还读 `cache.*`（键名只在 `cache.md`） | 02(工单 2) / 03(工单 2) | 已核对 `LeituCacheAutoConfiguration.cachePolicy(ConfigReader)` |
-| 6 | **Boot 4 的 `@AutoConfigureMockMvc` 包名搬家**（→ `org.springframework.boot.webmvc.test.autoconfigure`），文档只说模块名 | 02 / 03 | 两条独立命中 |
-| 7 | **`maven-enforcer-plugin` 的 `<message>` 被静默丢弃**（3.5.0 不认该参数），AGENTS.md 承诺的「带着修复说明拦下」**不成立** | 01(工单 3) | 本机 `mvn` 日志 18 次 `Parameter 'message' is unknown`，已核对 |
-| 8 | **预算的量纲未写**（「万字符」是 Unicode 字符还是字节）：按字节算，01 卡自报的上界 40,432 已越线 | 01(A1) | 打的是评测自己的守卫，不是文档 |
+| # | 缝 | 命中 | 判据 | 处置 |
+|---|---|---|---|---|
+| 1 | **金样本示范了自己明令禁止的事**：`examples/spring-boot/src/main/resources/application.properties:11` 有 `demo.trust-request-headers=true`，而 `INTEGRATION.md:135` 写「放主配置等于把它带进生产」并在 §262 列为红线 | 01(A2 自相矛盾) / 03(工单 7) | 已核对原文，**确认为自相矛盾** | ✅ 开关挪进 `application-demo.properties`，主配置留指路注释；`SmokeTest` 加 `@ActiveProfiles("demo")`；**新增守卫** `金样本主配置不得出现INTEGRATION红线里的键`（键名从 INTEGRATION 现取） |
+| 2 | **`ConfigReader` Bean 的真实源链没有文档**：文档写 `standard()` 三源，starter 装配的是四段链（spring-overrides → 宿主 ConfigSource → spring-files → leitu.properties） | 03(歧义 1，反编译才确认) | 已核对 `LeituConfigAutoConfiguration` 构造顺序与 `LeituStarterWiringTest.Environment里的键_优先于三源()`；根因是 `config-source.md` 的「成套答案」仍停在 0.2.0「starter 待接入」 | ✅ INTEGRATION §2 补四层源链表 + 标题改为「框架消费哪些键、你拿到的 `ConfigReader` 读哪几层」；`config-source` 的「成套答案」改为已交付。**无机器守卫** |
+| 3 | **失败投影的 kind→status 映射表缺失**（BUSINESS→400 / `guard.denied`→403 / SYSTEM→500 / `attributes["http.status"]` 可覆盖）；`guard.denied` 还是**保留 type**（业务侧写同名 `type` 会意外拿到 403） | 01(工单 4) / 02(歧义 9、工单 9) / 03(工单 5) | 三条全中 | ✅ `failure-response` 补四条优先级表 + 两条推论（400/404 由你定；`guard.denied` 保留）。**无机器守卫** |
+| 4 | **`spring-boot-maven-plugin` 在 `<parent>` 姿势下无人托管**，实测解析到 `4.2.0-RC1`（含 RC）；`repackage` 也不自动绑，`mvn package` 出瘦 jar | 01(A3/A4) / 03(工单 3、9) | 根 pom 的 `pluginManagement` 只有 compiler 与 surefire，已核对 | ✅ 根 pom 托管 `spring-boot-maven-plugin`（`${spring-boot.version}`）；`repackage` 不自动绑一条写进 INTEGRATION §1。**无机器守卫**（可用 `-P eval` 回归） |
+| 5 | **`INTEGRATION` §2 标题「框架只读这三个」误导**：表里只有 `leitu.openapi.*`，而 `CachePolicy.fromConfig` 还读 `cache.*`（键名只在 `cache.md`） | 02(工单 2) / 03(工单 2) | 已核对 `LeituCacheAutoConfiguration.cachePolicy(ConfigReader)` | ✅ 标题改写 + 正文指到 cache 页。**无机器守卫** |
+| 6 | **Boot 4 的 `@AutoConfigureMockMvc` 包名搬家**（→ `org.springframework.boot.webmvc.test.autoconfigure`），文档只说模块名 | 02 / 03 | 两条独立命中 | ✅ INTEGRATION §1 补全限定名（INTEGRATION:75）。**无机器守卫** |
+| 7 | **`maven-enforcer-plugin` 的 `<message>` 被静默丢弃**（3.5.0 不认该参数），AGENTS.md 承诺的「带着修复说明拦下」**不成立** | 01(工单 3) | 本机 `mvn` 日志 18 次 `Parameter 'message' is unknown`，已核对 | ✅ message 移进各 rule。**实证**：JDK 17 下 `./mvnw validate` 现在真打印「leitu 需要 JDK 21+…修复：macOS 执行 export JAVA_HOME=…」；JDK 21 下 unknown 告警 18 → **0** |
+| 8 | **预算的量纲未写**（「万字符」是 Unicode 字符还是字节）：按字节算，01 卡自报的上界 40,432 已越线 | 01(A1) | 打的是评测自己的守卫，不是文档 | ✅ 三张卡改为「万 Unicode 字符（`wc -m`）」，守卫正则同步接受两种写法 |
 
-### 下一步（还没做）
+**闭环时的诚实边界**：8 条里**只有 #1 和 #8 有机器守卫**；#2/#3/#4/#5/#6 是文档事实，
+改对了但**没有任何机器能守住它不再漂移**——它们只能靠下一轮采样回归发现。
+这条边界本身就是下一步的输入：**#2 的根因（答案页的「成套答案」声明了一个已交付却未描述的装配）
+是本库第二次犯**（第一次是「引 starter 即得」），值得单独找一条可守的判据。
 
-- 修 #1～#8；#1 与 #2 属「文档主动误导」，按本库自己的分级是**最贵的一类红灯**；
-- 修完再加两条机器守卫：**金样本不得违反 INTEGRATION 的红线清单**（#1 可守）、
-  **答案页的「成套答案」不得声明一个已交付但未描述的装配**（#2 较难，至少要守住 `config-source` 页的措辞）；
+**复核时的两个新发现（未处置，需拍板）**：
+
+1. **任务卡 03 已压线**：按序读实测 **49,971 / 预算 50,000**，余量 **29 字符**。
+   文档再补任何一条事实，这张卡就会红——而红之后的唯一合法出路是「收窄必读面」（守卫不许默默调大预算）。
+   收窄方向有执行者原话依据：03 的 `who-is-operating` / `allow-or-not` / `api-contract` 三页对本次信息量很低。
+2. **仓库里有 `.zwork/`（548K，未入库）**：上一批采样 harness 的临时工作区残留——
+   37 个 sanitized 副本（含**旧版 `INTEGRATION.md`**）+ 5 个 agent runs 原始记录。
+   它自带 `.gitignore`（内容为 `*`），所以 `git status` 看不见，但**会污染全仓 grep**
+   （本次复核 `demo.trust-request-headers` 命中 10 条假阳性，全部来自它）。
+   内容已提炼进 `eval/runs/`，判断是纯残留——但删它属于删除动作，须由人拍板。
+
+> 上表写于 2026-10-28 采样当天，当时的「下一步」是修 #1～#8 与补守卫。
+> **2026-10-29 复核：#1～#8 已全部处置**（见上表「处置」列），#1 与 #8 的守卫已落地并经反向自测。
+> 下面这两条保留原样，供对照当时判断与最终做法的差距：
+
+- ~~修 #1～#8~~ ✅ 已完成（2026-10-28，三条提交 `247f2cd` / `d639e6d` / `67578d4`）；
+- ~~加机器守卫：金样本不得违反 INTEGRATION 的红线清单~~ ✅ 已落地（#1，含反向自测）；
+  ~~答案页的「成套答案」不得声明一个已交付但未描述的装配~~ ❌ **未落地**（#2 较难，仍是靠采样回归）；
 - 然后**再采一轮**才算闭环——本轮的读数属于「修复前」，修完必须重采才知道修对了没有。
 
 ## 2026-10-28 · 最小上下文口径修正（结构性变更，未重采）
