@@ -16,11 +16,16 @@
 
 ```java
 // 已实现：leitu-core 的 cn.youhuale.leitu.core.observe 包
-public interface ObservationRecorder {          // Port：业务认识的全部接口
+public interface ObservationRecorder {          // Port：业务认识的全部接口（model）
     void record(ObservationEvent event);
 }
 
-public record ObservationEvent(
+@FunctionalInterface
+public interface ObservationSink {              // SPI：落点（spi），宿主 / adapter 实现
+    void accept(ObservationEvent event);        // 约定不抛异常：观测失败不许打断主流程
+}
+
+public record ObservationEvent(                 // model
         String name,             // 点分命名（如 "order.cancelled"），构造即校验
         ExecutionContext context,// 锚点：谁 + traceId（复用 who-is-operating，永不缺席）
         Instant occurredAt,
@@ -29,13 +34,17 @@ public record ObservationEvent(
         AiUsage aiUsage,         // 可选：AI 用量（model + input/output token；费用走 attributes）
         Map<String, String> attributes)  // 逃生门：领域自有细节，不可变拷贝
 { }
+// 静态工厂只有 of(name, ctx[, outcome[, duration]]) 与 aiCall(...)，**都不收 attributes**：
+// 要带领域细节（如 fx.from）只能直接调上面这个七参构造器。
 ```
 
 - **形状**：横切字段全部强类型——谁、结果、耗时、token 用量是检索与聚合的键，不靠字符串键约定
 - **兜底**：空装配同样可记——事件落到 JDK 日志单行输出（失败升 WARNING）。观测维度=最小可用实现，非 Noop（分维度默认值，见 GLOSSARY）；落点抛异常被吞并大声记错，**观测不打断主流程**
 - **三支柱**：logs / metrics / traces 是同一事件流在落点（`ObservationSink` SPI）侧的三种投影——adapter 实现 sink 接日志管线 / OTel / Micrometer（待建），core 只承诺事件协议
-- **自定义落点即一个 Bean**：宿主声明一个 `ObservationSink` Bean，starter 装配记录器时自动收编（`ObjectProvider<Sink>`）——
-  无需任何配置项；测试里用同一个缝把事件收进内存列表即可断言
+- **自定义落点即一个 Bean**：宿主声明一个 `ObservationSink` Bean（就是个 lambda：`sink -> list.add(event)`），
+  starter 自动收编全部（`ObjectProvider<ObservationSink>`）——无需任何配置项，测试里用同一个缝收进内存列表即可断言
+- **web adapter 自己也记一条**：每次 problem+json 投影额外记 `failure.projected`（duration 为 null），
+  与业务事件同一事件流——写「每次调用正好一条事件」的断言时要算上它
 - **失败调用也记事件**：事件带 `Outcome.failure("原因")` 即是失败记录；记不记、记什么由业务定，
   但协议不区分成败通道——同一事件流、同一锚点
 - **成套答案**：本答案交付形状 + 兜底；三支柱绑定（adapter）与进程内聚合/费用报表（capability）待真实痛点升级后接入
