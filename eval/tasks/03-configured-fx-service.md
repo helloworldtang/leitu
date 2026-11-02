@@ -26,6 +26,10 @@ v2 已于当日重采（**8/8、一次绿灯是、180 秒、13 条歧义**，见
 
 **v3 未重新采样**：v2 的 8/8、180 秒、13 条歧义只属于 v2 的阅读面。
 
+**v4**（2026-11-02）：**判据一条未加、一条未减，只把验收 3 的口径写死**——"换一组配置值断言结果变化"
+原先没说清允不允许两个测试上下文，不同执行者会按不同理解交付，读数就不可比（同一张卡跑出两种工作量）。
+口径见验收 3 的括注；这条改动不影响 v3 的预算与阅读面。
+
 ## 目标
 
 在空目录创建一个可运行的 Spring Boot 汇率换算服务：`GET /fx/convert?from=USD&to=CNY&amount=100`，汇率**从配置来**，每次调用**记录观测事件**，并满足下面验收的行为。
@@ -71,6 +75,10 @@ v2 已于当日重采（**8/8、一次绿灯是、180 秒、13 条歧义**，见
    `ExecutionContextBinder` / `ExecutionContextReader` / `GuardChain` / `ConfigReader` /
    `ObservationRecorder` / `JdbcDataStoreFactory` / `OpenAPI`（末者需自引 springdoc；本任务无库表，`JdbcDataStoreFactory` 就位即可，不强制用库）；
 3. **换算由配置驱动**：汇率值来自配置源（如 `fx.rate.USD-CNY`），改配置行为跟着变——测试里换一组配置值断言结果变化；
+   **口径（v4 写死，两种都算过）**：① 两个测试类各带不同的 `@SpringBootTest(properties = …)`——
+   **允许两个测试上下文**，重复启动的时间照实计入时长、不扣分（这是最直观的写法，别为了省时间把判据做虚）；
+   ② 同一上下文内改值（`ApplicationContextRunner` 重起，或替换 `ConfigReader` Bean 后重取）。
+   **不算过**：只断言 `ConfigReader` Bean 存在却不换值——那验的是装配，不是「配置驱动」。
 4. **每次调用记录观测事件**：注册一个自定义事件落点（Sink），捕获并断言——事件名点分（如 `fx.converted`）、操作者与 traceId 来自执行上下文、耗时非空；
 5. 失败投影：未知币对 → 业务错 problem+json（服务内统一一种状态码，`fx.pair-not-found` 类标识）；
 6. 守卫：非授权主体调用 → 403 `urn:leitu:problem:guard.denied`；

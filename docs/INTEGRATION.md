@@ -76,7 +76,7 @@
 不再是 Boot 3 的 `org.springframework.boot.test.autoconfigure.web.servlet`。按旧肌肉记忆写会编译不过，
 且 IDE 补全不给提示（连续两轮采样都卡在这里）。
 **Boot 4 宿主还需在 `dependencyManagement` 里 import `junit-bom` 6.x**——根 BOM 自 0.2.1 起不再携带它，
-不引就可能被压回 JUnit 5，测试基建直接 `NoSuchMethod`。
+不引就可能被压回 JUnit 5，测试基建直接 `NoSuchMethodError`。
 
 版本一律交给 BOM，**不要手写版本号**——`leitu-parent` 同时 import 了 `spring-boot-dependencies`，Boot 的版本也从这里来。
 插件按你选的姿势分两种，**别混着抄**（混着抄不报错，只是噪音）：

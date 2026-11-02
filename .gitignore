@@ -19,3 +19,7 @@ node_modules/
 
 # agent workspace (本地记忆/会话数据，不入库)
 .workbuddy/
+
+# 外部 agent 工具的工作目录：它自带 .gitignore（内容 `*`），所以 git status 看不见里面，
+# 但目录本身仍是未跟踪项、且会污染全仓 grep（2026-11-02 用户实测后删除，会再生）
+.zwork/
