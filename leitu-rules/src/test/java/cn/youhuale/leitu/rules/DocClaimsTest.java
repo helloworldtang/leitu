@@ -321,6 +321,16 @@ class DocClaimsTest {
         return new DeliveryScan(deliveredClaims, problems);
     }
 
+    /** 取文本里某个正则的全部匹配（有捕获组取第一组，否则取整体）。 */
+    private static Set<String> matches(String text, String regex) {
+        Set<String> found = new LinkedHashSet<>();
+        Matcher m = Pattern.compile(regex).matcher(text);
+        while (m.find()) {
+            found.add(m.groupCount() > 0 ? m.group(1) : m.group());
+        }
+        return found;
+    }
+
     /** 文本里是否存在某模式的匹配，且其起始位置离 {@code at} 不超过 {@code window}。 */
     private static boolean near(String line, Pattern pattern, int at, int window) {
         Matcher m = pattern.matcher(line);
@@ -566,6 +576,62 @@ class DocClaimsTest {
                 "leitu-spring-boot-starter/src/main/java/cn/youhuale/leitu/starter/LeituConfigAutoConfiguration.java"));
         assertInOrder(code, List.of("overrides(", "orderedStream", ".files(", "\"leitu.properties\""),
                 "LeituConfigAutoConfiguration 的装配顺序");
+    }
+
+    // ---------------------------------------------------------------- P1 缓存答案页
+
+    /**
+     * {@code cache} 答案页的三条关键宣称必须有实现落点：配置键、观察事件数与 {@code cache.key}、租户作用域键。
+     *
+     * <p>为什么是这三条：它们是"照文档做"与"照文档猜"的分界——
+     * 键名写错配置不生效、事件数对不上观测面板就是空的、**租户作用域键写成人肉前缀忘一次就跨租户串数据**
+     * （{@code cache.md} 自己把这条列为最贵的事故形态）。
+     *
+     * <p>判据两侧都从真源取：键名与事件数取自文档原文，落点取自实现源码——
+     * 文档说要 5 个事件、代码里多了一个，就红。
+     */
+    @Test
+    void 缓存答案页的关键宣称必须有实现落点() throws IOException {
+        String doc = Files.readString(ROOT.resolve("docs/problems/cache.md"));
+
+        String policyLine = doc.lines()
+                .filter(l -> l.contains("fromConfig") && l.contains("cache."))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "cache.md 里找不到点名配置键的 fromConfig 行——判据的取词位置变了，本守卫会静默恒绿"));
+        Set<String> keys = matches(policyLine, "cache\\.[a-z-]+");
+        assertTrue(keys.size() >= 3, "文档这一行应点名三个配置键，实际解析到 " + keys);
+        String policy = Files.readString(ROOT.resolve(
+                "leitu-capability-cache/src/main/java/cn/youhuale/leitu/capability/cache/model/CachePolicy.java"));
+        for (String key : keys) {
+            assertTrue(policy.contains("\"" + key + "\""),
+                    "文档说 CachePolicy 读 " + key + "，实现里没有这个字面量——"
+                            + "按文档配的人会配一个没人读的键，而且不会报错");
+        }
+
+        Set<String> events = new LinkedHashSet<>();
+        String observing = Files.readString(ROOT.resolve(
+                "leitu-capability-cache/src/main/java/cn/youhuale/leitu/capability/cache/internal/ObservingCache.java"));
+        events.addAll(matches(observing, "\"(cache\\.[a-z.]+)\""));
+        events.remove("cache.key");
+        Matcher count = Pattern.compile("观察\\s*(\\d+)\\s*事件").matcher(doc);
+        assertTrue(count.find(), "cache.md 里找不到「观察 N 事件」——观测事件的条数失去对账源，本守卫会恒绿");
+        assertEquals(Integer.parseInt(count.group(1)), events.size(),
+                "文档说观察 " + count.group(1) + " 个事件，实现里有 " + events.size() + " 个（" + events + "）"
+                        + "——观测面板按文档建，多出来的看不到、少了的是空的");
+        assertTrue(observing.contains("\"cache.key\""),
+                "文档说事件带 cache.key，实现里没有这个属性——按它写告警规则的人查不到键");
+
+        assertTrue(doc.contains("租户作用域键"), "cache.md 不再宣称租户作用域键——若这是决策变了，先过 ADR 再改守卫");
+        String scopedKey = Files.readString(ROOT.resolve(
+                "leitu-capability-cache/src/main/java/cn/youhuale/leitu/capability/cache/internal/ScopedKey.java"));
+        String inMemory = Files.readString(ROOT.resolve(
+                "leitu-capability-cache/src/main/java/cn/youhuale/leitu/capability/cache/internal/InMemoryCache.java"));
+        assertTrue(scopedKey.contains("tenant"),
+                "文档的「租户作用域键」在实现里找不到 tenant 组件——键退化成裸键，跨租户串数据的风险回来了");
+        assertTrue(inMemory.contains("operator().tenant()"),
+                "租户必须取自执行上下文（单一事实源），实现里没有 operator().tenant()——"
+                        + "这时候键里的租户只能来自调用方传参，正是文档反对的「人肉前缀」");
     }
 
     // ---------------------------------------------------------------- 工具
