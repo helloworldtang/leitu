@@ -17,6 +17,7 @@
 - [接入清单 INTEGRATION](INTEGRATION.md) —— 前置 / 依赖 / 属性 / 建表 / 入口 / 投影 / 自检
 - [路线图 ROADMAP](ROADMAP.md) —— 阶段、进度与下一步
 - [架构视图](architecture/views.md) —— 由 `scripts/ExportArchitecture.java` 生成的 4R 视图
+- [成熟度标准与自评](../MATURITY.md) —— 六维五级：一个面向 AI 的框架成熟到什么程度，本仓库目前在哪一级
 - [七维体检报告（2026-10-26）](reviews/2026-10-26-七维体检.md) —— 七维评分、扣分点与三张工单
 
 ## 已答的问题页（`answered`）
