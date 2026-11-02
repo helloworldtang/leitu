@@ -79,6 +79,20 @@ class DocClaimsTest {
     /** 「已交付」与模块名之间允许的最大距离（这个短语总是紧挨着模块名写）。 */
     private static final int DONE_WINDOW = 40;
 
+    /**
+     * 形如 {@code Type.method(...)}、{@code Type.method(arg, ...)}、{@code Type.method()} 的调用形态。
+     *
+     * <p>类型必须首字母大写：{@code chain.check(...)} 里 {@code chain} 是实例变量，
+     * 它的方法该在 {@code GuardChain} 里找，但文档没说是哪个类型——<b>无从取证就不判</b>，
+     * 硬猜会把「守卫漏判」伪装成「守卫在判」。
+     */
+    private static final Pattern CALL_SPAN =
+            Pattern.compile("^(?:[a-z][\\w]*\\.)*([A-Z][A-Za-z0-9]*)\\.([a-z][\\w]*)\\s*\\(.*\\)$");
+
+    /** 形如 {@code Kind.BUSINESS} 的枚举项/常量形态（成员名全大写才算）。 */
+    private static final Pattern CONST_SPAN =
+            Pattern.compile("^(?:[a-z][\\w]*\\.)*([A-Z][A-Za-z0-9]*)\\.([A-Z][A-Z0-9_]*)$");
+
     // ---------------------------------------------------------------- P0-1 签名/类型存在性
 
     /**
@@ -632,6 +646,277 @@ class DocClaimsTest {
         assertTrue(inMemory.contains("operator().tenant()"),
                 "租户必须取自执行上下文（单一事实源），实现里没有 operator().tenant()——"
                         + "这时候键里的租户只能来自调用方传参，正是文档反对的「人肉前缀」");
+    }
+
+    // ---------------------------------------------------------------- P1-1 方法/常量落点
+
+    /**
+     * 文档里 {@code Type.method(...)} 的方法名、{@code Type.CONSTANT} 的常量名，必须在<b>那个类型自己的
+     * {@code .java}</b> 里真实声明。
+     *
+     * <p>由来：{@code ObservationSink} 那次缺的不只是一个类型名，是一行<b>签名</b>——
+     * {@code void accept(ObservationEvent)} 里的方法名与形状。补上类型存在性守卫（P0-1）之后，
+     * 「类型存在但方法叫另一个名字」仍然没人管：读者拿到 {@code DataStores.guard(...)} 会编译不过，
+     * 然后先怀疑自己的依赖版本。
+     *
+     * <p>三条刻意的判据限定，都是为了防止「看起来在守、其实永远绿」：
+     * <ol>
+     *   <li><b>作用域限定在声明类型</b>：不能全仓找同名方法——那样任何类里有个 {@code save()} 就能通过，
+     *       而文档说的恰恰是「这个类有这个接口」。所以要按类型名定位到文件再找；</li>
+     *   <li><b>先剥注释与字符串</b>：{@code AccessGuards} 的 javadoc 示例里就写着
+     *       {@code AccessGuards.roleMap(roleMap)}，若不剥注释，"方法只存在于注释"会被判为存在——
+     *       这正是本守卫最容易退化的地方，反向自测里专门有一条证明它现在会红；</li>
+     *   <li><b>不判无括号形态</b>：{@code ProblemJson.statusOf}、{@code AccessRequest.resource}
+     *       既可能是方法引用也可能是字段/record 组件，判了只能靠猜。</li>
+     * </ol>
+     *
+     * <p>反过来，还要防<b>误报</b>：record 的组件访问器由编译器生成，源码里查不到
+     * {@code ttl(}——第一版判据就把它判成了"方法不存在"，逼人为了过守卫去改写本来正确的文档。
+     * 所以 record 组件（{@link #recordComponents}）算作可调用成员。
+     *
+     * <p><b>它只到"名字存在"，不到"签名完整"</b>——参数个数、顺序、类型都管不了，
+     * 所以能挡住"写了个不存在的方法"，挡不住"参数顺序写反"。别拿它的绿灯当"签名对"。
+     */
+    @Test
+    void 文档点名的方法与常量必须在它声明所属的类型里() throws IOException {
+        MemberScan scan = scanDocumentedMembers(ROOT, ownTypeFiles(ROOT));
+        assertTrue(scan.checked() >= 8,
+                "只扫到 " + scan.checked() + " 处「类型.成员」引用——判据的解析式与文档写法脱节了，"
+                        + "此时本守卫会静默恒绿（比不守更危险）。当前判据只认 Type.method(...) 与 Type.CONSTANT 两种形态");
+        assertTrue(scan.problems().isEmpty(),
+                "文档点名的方法/常量在它声明所属的类型里找不到（照它写会编译不过，而读者会先怀疑自己的依赖版本）：\n"
+                        + String.join("\n", scan.problems())
+                        + "\n修复二选一：① 改成那个类型上真实存在的方法名；"
+                        + "② 若方法其实声明在父类型或另一个类型上，文档就写成真正声明它的类型——"
+                        + "这本身就是有用的信息「该去哪个类型上找」。");
+    }
+
+    /**
+     * <b>反向自测</b>：点名不存在的方法必须红；只写在注释里的方法也必须红（证明剥注释生效）；
+     * 真实存在的方法必须绿。
+     *
+     * <p>第二条是这条守卫的命门：{@code AccessGuards} 的 javadoc 里就带着自己的调用示例，
+     * 不剥注释的话"文档写的方法名恰好出现在源码注释里"会被当成存在——一种几乎不可见的假绿。
+     */
+    @Test
+    void 反向自测_点名不存在的方法或只写在注释里的方法必然报红(@TempDir Path tmp) throws IOException {
+        Path stores = tmp.resolve(
+                "leitu-capability-data/src/main/java/cn/youhuale/leitu/capability/data/api/DataStores.java");
+        Files.createDirectories(stores.getParent());
+        Files.writeString(stores, """
+                package cn.youhuale.leitu.capability.data.api;
+
+                /**
+                 * javadoc 示例里提到 guarded(...) —— 这只是注释，不是声明。
+                 */
+                public final class DataStores {
+                    // 行注释里也提一次 vanished(...)
+                    public static void inMemory() {
+                        String note = "phantom( 在字符串里也不算";
+                    }
+                }
+                """);
+
+        Path page = tmp.resolve("docs/problems/neg.md");
+        Files.createDirectories(page.getParent());
+        Files.writeString(page, "- 用 `DataStores.inMemory()` 兜底。\n");
+
+        MemberScan ok = scanDocumentedMembers(tmp, ownTypeFiles(tmp));
+        assertEquals(1, ok.checked(), "应恰好判 1 处，实际 " + ok.checked() + "——解析式与文档写法脱节");
+        assertTrue(ok.problems().isEmpty(), "inMemory 真实存在，不该报红：" + ok.problems());
+
+        Files.writeString(page, "- 用 `DataStores.phantom()` 兜底。\n");
+        assertTrue(scanDocumentedMembers(tmp, ownTypeFiles(tmp)).problems().stream()
+                        .anyMatch(p -> p.contains("phantom")),
+                "守卫失效：文档点名了不存在的 phantom()，判据却判为通过");
+
+        Files.writeString(page, "- 用 `DataStores.guarded(...)` 包一层。\n");
+        assertTrue(scanDocumentedMembers(tmp, ownTypeFiles(tmp)).problems().stream()
+                        .anyMatch(p -> p.contains("guarded")),
+                "守卫失效：guarded 只出现在 DataStores 的 javadoc 注释里，判据却当成真实声明——"
+                        + "「文档写的方法名恰好出现在注释里」这种假绿必须被挡住");
+
+        Files.writeString(page, "- 用 `DataStores.vanished(...)` 包一层。\n");
+        assertTrue(scanDocumentedMembers(tmp, ownTypeFiles(tmp)).problems().stream()
+                        .anyMatch(p -> p.contains("vanished")),
+                "守卫失效：vanished 只在行注释里，不是声明，判据却当成存在");
+
+        // 反方向：record 组件的访问器源码里没有 `ttl(`，但确实可调用——不能误报
+        Path policy = tmp.resolve(
+                "leitu-capability-cache/src/main/java/cn/youhuale/leitu/capability/cache/model/CachePolicy.java");
+        Files.createDirectories(policy.getParent());
+        Files.writeString(policy, """
+                package cn.youhuale.leitu.capability.cache.model;
+
+                import java.time.Duration;
+
+                public record CachePolicy(long maxSize, Duration ttl, boolean enabled) {
+                }
+                """);
+        Files.writeString(page, "- 取 `CachePolicy.ttl()` 做超时。\n");
+        MemberScan record = scanDocumentedMembers(tmp, ownTypeFiles(tmp));
+        assertTrue(record.problems().isEmpty(),
+                "误报：ttl 是 CachePolicy 的 record 组件，访问器由编译器生成、源码里没有 `ttl(`——"
+                        + "这类误报会逼人为了过守卫去改写本来正确的文档：" + record.problems());
+    }
+
+    private record MemberScan(int checked, List<String> problems) {
+    }
+
+    private static MemberScan scanDocumentedMembers(Path root, Map<String, List<Path>> own) throws IOException {
+        List<String> problems = new ArrayList<>();
+        int checked = 0;
+        for (Path doc : answerDocs(root)) {
+            String text = Files.readString(doc);
+            for (Span span : codeSpans(text)) {
+                String raw = span.text();
+                Matcher call = CALL_SPAN.matcher(raw);
+                Matcher constant = CONST_SPAN.matcher(raw);
+                String type;
+                String member;
+                boolean isCall;
+                if (call.matches()) {
+                    type = call.group(1);
+                    member = call.group(2);
+                    isCall = true;
+                } else if (constant.matches()) {
+                    type = constant.group(1);
+                    member = constant.group(2);
+                    isCall = false;
+                } else {
+                    continue;
+                }
+                List<Path> files = own.get(type);
+                if (files == null) {
+                    continue;   // 不是本库类型：类型存在性归 P0-1，其成员落点无从取证
+                }
+                checked++;
+                boolean found = false;
+                for (Path file : files) {
+                    String code = stripJavaNoise(Files.readString(file));
+                    Pattern ref = isCall
+                            ? Pattern.compile("\\b" + Pattern.quote(member) + "\\s*\\(")
+                            : Pattern.compile("\\b" + Pattern.quote(member) + "\\b");
+                    if (ref.matcher(code).find() || (isCall && recordComponents(code).contains(member))) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    problems.add(rel(root, doc) + ":" + span.line() + " 点名 `" + raw + "`，但 "
+                            + type + ".java 里没有" + (isCall ? "方法 " : "常量 ") + member);
+                }
+            }
+        }
+        return new MemberScan(checked, problems);
+    }
+
+    /**
+     * record 的组件名。
+     *
+     * <p>为什么必须单独认：{@code CachePolicy} 是 {@code record(long maxSize, Duration ttl, boolean enabled)}，
+     * 访问器 {@code ttl()} 由编译器生成，<b>源码里根本查不到 {@code ttl(}</b>。第一版判据就把它判成了
+     * 「方法不存在」——这类误报比漏报更伤：它逼人为了过守卫去文档里写不自然的话。
+     *
+     * <p>按顶层逗号切参数（泛型里的逗号不算），再去掉注解、泛型与修饰，取最后一个标识符。
+     */
+    private static Set<String> recordComponents(String code) {
+        Set<String> names = new LinkedHashSet<>();
+        Matcher m = Pattern.compile("\\brecord\\s+[A-Z][A-Za-z0-9]*\\s*\\(([^)]*)\\)").matcher(code);
+        while (m.find()) {
+            int depth = 0;
+            StringBuilder current = new StringBuilder();
+            List<String> parts = new ArrayList<>();
+            for (char c : m.group(1).toCharArray()) {
+                if (c == '<') {
+                    depth++;
+                } else if (c == '>') {
+                    depth--;
+                }
+                if (c == ',' && depth == 0) {
+                    parts.add(current.toString());
+                    current.setLength(0);
+                    continue;
+                }
+                current.append(c);
+            }
+            parts.add(current.toString());
+
+            for (String part : parts) {
+                String bare = part.replaceAll("@[\\w.]+(?:\\([^)]*\\))?", " ")
+                        .replaceAll("<[^<>]*>", " ")
+                        .trim();
+                String[] tokens = bare.split("\\s+");
+                if (tokens.length > 0 && !tokens[tokens.length - 1].isEmpty()) {
+                    names.add(tokens[tokens.length - 1]);
+                }
+            }
+        }
+        return names;
+    }
+
+    /** 本库类型名 -> 声明文件（同名类型可能不止一个，逐个都算候选）。 */
+    private static Map<String, List<Path>> ownTypeFiles(Path root) throws IOException {
+        Map<String, List<Path>> own = new LinkedHashMap<>();
+        try (Stream<Path> files = Files.walk(root)) {
+            for (Path p : files.filter(f -> f.toString().endsWith(".java"))
+                    .filter(f -> !f.toString().contains("/target/")).toList()) {
+                own.computeIfAbsent(p.getFileName().toString().replace(".java", ""),
+                        k -> new ArrayList<>()).add(p);
+            }
+        }
+        return own;
+    }
+
+    /**
+     * 剥掉 Java 源码里的注释与字符串字面量，只留下真正的声明。
+     *
+     * <p>为什么必须剥：javadoc 里的用法示例（{@code AccessGuards}、{@code DataStores} 都有）
+     * 写着真实的方法名，但那是文档在解释自己，不是声明。不剥就会把"只在注释里"判为存在，
+     * 而这恰好是本守卫最容易被误信的地方。
+     *
+     * <p>注释与字符串一律替换成空格而不是删除——避免 {@code foo/*c* /bar} 被拼成 {@code foobar}。
+     */
+    private static String stripJavaNoise(String src) {
+        StringBuilder out = new StringBuilder(src.length());
+        int i = 0;
+        int n = src.length();
+        while (i < n) {
+            char c = src.charAt(i);
+            if (c == '/' && i + 1 < n && src.charAt(i + 1) == '/') {
+                while (i < n && src.charAt(i) != '\n') {
+                    i++;
+                }
+                out.append(' ');
+            } else if (c == '/' && i + 1 < n && src.charAt(i + 1) == '*') {
+                i += 2;
+                while (i + 1 < n && !(src.charAt(i) == '*' && src.charAt(i + 1) == '/')) {
+                    i++;
+                }
+                i = Math.min(i + 2, n);
+                out.append(' ');
+            } else if (c == '"' && src.startsWith("\"\"\"", i)) {
+                i += 3;
+                int close = src.indexOf("\"\"\"", i);
+                i = close < 0 ? n : close + 3;
+                out.append(' ');
+            } else if (c == '"' || c == '\'') {
+                char quote = c;
+                i++;
+                while (i < n && src.charAt(i) != quote) {
+                    if (src.charAt(i) == '\\') {
+                        i++;
+                    }
+                    i++;
+                }
+                i++;
+                out.append(' ');
+            } else {
+                out.append(c);
+                i++;
+            }
+        }
+        return out.toString();
     }
 
     // ---------------------------------------------------------------- 工具
