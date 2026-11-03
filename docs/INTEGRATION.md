@@ -205,7 +205,7 @@ Guard orderCreateGuard() {
 ```
 
 守卫声明即收编——写一个 `Guard` Bean 就进判定链，其余装配自动完成（用户 Bean 优先）。
-内存兜底 `DataStores.inMemory(...)` 仅用于测试与无库场景，重启即失。
+内存兜底 `DataStores.inMemory(Order::id)` 仅用于测试与无库场景，重启即失。
 
 `columns(...)` 与 `values(...)` **按位置一一对应**（列表顺序即列顺序），不靠列名匹配——多列时自己对齐。
 

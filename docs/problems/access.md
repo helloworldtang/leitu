@@ -41,7 +41,7 @@ Guard aiCalls() {
 
 要点：
 
-- **`PermissionPolicy` 是扩展缝**：`AccessGuards.roleMap(...)` 返回的就是它——想把 RBAC-lite 换成
+- **`PermissionPolicy` 是扩展缝**：`AccessGuards.roleMap(roleMap)` 返回的就是它——想把 RBAC-lite 换成
   ABAC / 外部权限服务，实现同一个接口即可，判定链与业务代码都不用动；
 - **`RoleMap` 是纯数据**：构建后不可变、进程内查表 O(1)；**未配置的主体 / 动作一律不放行**
   （deny-by-default 在 Guard 侧执行，表只陈述事实）；
