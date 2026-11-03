@@ -12,8 +12,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,6 +36,75 @@ class CatalogIntegrityTest {
 
     List<Catalog.Entry> entries() throws IOException {
         return Catalog.load(ROOT.resolve("catalog/problems.json"));
+    }
+
+    /**
+     * 问题目录的 {@code version} 必须等于根 pom 的库版本。
+     *
+     * <p>由来：这个字段长期停在 {@code 0.2.0-docs}，而库已经发到 {@code 0.2.1}——<b>没有任何守卫看过它</b>。
+     * 它不影响构建、不影响运行时，属于「散落型漂移」里最容易被永久忽略的那类；
+     * 但它是别人判断「这份目录讲的是哪个版本」的唯一线索，写错了等于把旧答案冒充新答案。
+     *
+     * <p>为什么不让它独立演进：本库已经立过一条规矩——版本真源只有根 pom 一处
+     * （{@code check-skill.mjs} 强制 SKILL.md 与它相等）。目录若自成一条版本线，
+     * 就会出现「库 0.2.3、目录 0.2.1」的说法，读者无法判断哪些答案对应哪个库版本。
+     * 目录是派生品，派生物不带自己的版本号。
+     *
+     * <p>取版本的锚点与 {@code check-skill.mjs} 完全一致（{@code leitu-parent} 紧跟 {@code <version>}），
+     * 两边各写一套解析式迟早会分叉。
+     */
+    @Test
+    void 问题目录的版本必须等于根pom的版本() throws IOException {
+        List<String> problems = catalogVersionProblems(ROOT);
+        assertTrue(problems.isEmpty(), String.join("\n", problems));
+    }
+
+    /** <b>反向自测</b>：目录写旧版本 → 红；对齐 → 绿。 */
+    @Test
+    void 反向自测_目录版本落后必然报红(@TempDir Path tmp) throws IOException {
+        Files.writeString(tmp.resolve("pom.xml"),
+                "<project><artifactId>leitu-parent</artifactId><version>0.2.1</version></project>\n");
+        Path catalog = tmp.resolve("catalog/problems.json");
+        Files.createDirectories(catalog.getParent());
+        Files.writeString(catalog, "{\"version\": \"0.2.0-docs\", \"entries\": []}\n");
+
+        assertTrue(catalogVersionProblems(tmp).stream().anyMatch(p -> p.contains("0.2.0-docs")),
+                "守卫失效：目录版本落后，判据却没红");
+
+        Files.writeString(catalog, "{\"version\": \"0.2.1\", \"entries\": []}\n");
+        assertTrue(catalogVersionProblems(tmp).isEmpty(),
+                "版本已对齐，不该红：" + catalogVersionProblems(tmp));
+    }
+
+    private static List<String> catalogVersionProblems(Path root) throws IOException {
+        List<String> problems = new ArrayList<>();
+        Path pom = root.resolve("pom.xml");
+        Path catalog = root.resolve("catalog/problems.json");
+        if (!Files.exists(pom) || !Files.exists(catalog)) {
+            return problems;
+        }
+        Matcher p = Pattern.compile(
+                "<artifactId>\\s*leitu-parent\\s*</artifactId>\\s*<version>([^<]+)</version>")
+                .matcher(Files.readString(pom));
+        if (!p.find()) {
+            problems.add("未能从根 pom 提取版本（锚点 leitu-parent 紧跟 <version> 没命中）——这条守卫形同关闭，按失败处理");
+            return problems;
+        }
+        String pomVersion = p.group(1).trim();
+
+        String text = Files.readString(catalog);
+        Matcher c = Pattern.compile("\"version\"\\s*:\\s*\"([^\"]+)\"").matcher(text);
+        if (!c.find()) {
+            problems.add("catalog/problems.json 里没有 version 字段——读者无从判断这份目录对应哪个库版本");
+            return problems;
+        }
+        String catalogVersion = c.group(1).trim();
+        if (!pomVersion.equals(catalogVersion)) {
+            problems.add("catalog 的 version 是 " + catalogVersion + "，根 pom 是 " + pomVersion
+                    + "——目录是派生品，不该带自己的版本线；改成 " + pomVersion
+                    + " 并同步 tools/cli/catalog-snapshot.json");
+        }
+        return problems;
     }
 
     @Test

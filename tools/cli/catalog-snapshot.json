@@ -1,7 +1,7 @@
 {
   "project": "leitu",
-  "version": "0.2.0-docs",
-  "note": "问题目录：本库回答哪些问题。字段制度见 docs/decisions/ADR-006。status: open=问题立目未答；drafted=答案已成文未实现；answered=五件套齐且有实现；deprecated/removed=退役（replaced_by 指向替代答案）。",
+  "version": "0.2.1",
+  "note": "问题目录：本库回答哪些问题。字段制度见 docs/decisions/ADR-006。status: open=问题立目未答；drafted=答案已成文未实现；answered=五件套齐且有实现；deprecated/removed=退役（replaced_by 指向替代答案）。version 是这份目录对应的库版本，必须等于根 pom 的 <version>（CatalogIntegrityTest 强制；此前它停在 0.2.0-docs 落后一个版本且无人守）。",
   "entries": [
     {
       "id": "config-source",

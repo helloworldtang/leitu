@@ -919,6 +919,98 @@ class DocClaimsTest {
         return out.toString();
     }
 
+    // ---------------------------------------------------------------- 完整签名覆盖
+
+    /**
+     * 文档点名的每个接口，至少要有一处**可抄的完整签名**——括号里不能是 {@code ...}。
+     *
+     * <p>由来（MATURITY §2.1 维度 2 的门槛原文：「每个给 AI 抄的接口都有完整签名（包名 + 类型 +
+     * 方法名 + 参数），不只是类型名」）：2026-11-02 的自评把这一维判成达标，理由加了个括号
+     * 「到「名字」这一层」——但<b>括号不是修门槛</b>。实测当时 4 处省略号，其中 3 个接口在问题页与
+     * 接入清单里<b>没有任何一处完整签名</b>：读者只能去翻源码。
+     *
+     * <p>省略号掩盖的不是字数，是<b>重载分叉</b>：{@code AccessRequest.inbound(operator, ...)} 藏着
+     * {@code inbound(Operator, String, String)} 与 {@code inbound(String, String, String)} 两个重载，
+     * 第一个参数写错类型不报错（编译期选另一个重载），行为却在判定层看不见租户。
+     *
+     * <p>判据是<b>接口级</b>而不是「每一处」：同一接口第二次出现用省略号是合理的（读者已经抄过一次），
+     * 逼每处都写全只会把文档撑爆、逼人删掉重复提及。所以按 {@code Type.method} 分组，
+     * 组内只要有一处完整即可。
+     *
+     * <p>不判 {@code chain.check(AccessRequest...)} 这类：前缀是小写实例变量，不属于 {@code Type.method}
+     * 形态（且那里的 {@code ...} 是 Java 变参语法，不是省略）。
+     */
+    @Test
+    void 文档点名的每个接口至少有一处完整签名() throws IOException {
+        SignatureScan scan = scanSignatureCoverage(ROOT);
+        assertTrue(scan.interfaces() >= 6,
+                "只扫到 " + scan.interfaces() + " 个接口引用——判据的解析式与文档写法脱节了，本守卫会静默恒绿");
+        assertTrue(scan.incomplete().isEmpty(),
+                "这些接口在文档里只以省略号形态出现，读者抄不出能编译的调用（完整签名到底怎么排参数、"
+                        + "有没有重载分叉，只能去翻源码）：\n" + String.join("\n", scan.incomplete())
+                        + "\n修复：在其中一处写出完整参数（真实形参从源码取，别猜）。");
+    }
+
+    /**
+     * <b>反向自测</b>：只有省略号 → 红；补一处完整 → 绿（证明是接口级而不是每处都要求完整）；
+     * 另一个接口只有省略 → 只红它，不牵连已完整的那个。
+     */
+    @Test
+    void 反向自测_接口只有省略号形态必然报红(@TempDir Path tmp) throws IOException {
+        Path page = tmp.resolve("docs/problems/neg.md");
+        Files.createDirectories(page.getParent());
+        Files.writeString(page, "- 用 `DataStores.guarded(...)` 包一层。\n");
+        assertTrue(scanSignatureCoverage(tmp).incomplete().stream()
+                        .anyMatch(s -> s.contains("DataStores.guarded")),
+                "守卫失效：DataStores.guarded 只有省略号形态，判据却没红");
+
+        Files.writeString(page, """
+                - 用 `DataStores.guarded(...)` 包一层。
+                - 也可以 `DataStores.guarded(store, chain, "order", Order::id)`。
+                """);
+        assertTrue(scanSignatureCoverage(tmp).incomplete().isEmpty(),
+                "同一接口已有一处完整签名，另一处的省略号不该红（判据是接口级）："
+                        + scanSignatureCoverage(tmp).incomplete());
+
+        Files.writeString(page, """
+                - 也可以 `DataStores.guarded(store, chain, "order", Order::id)`。
+                - 兜底用 `DataStores.inMemory(...)`。
+                """);
+        SignatureScan mixed = scanSignatureCoverage(tmp);
+        assertEquals(1, mixed.incomplete().size(),
+                "应只红 inMemory 一个接口，实际：" + mixed.incomplete());
+        assertTrue(mixed.incomplete().get(0).contains("DataStores.inMemory"),
+                "红的应该是 DataStores.inMemory，实际：" + mixed.incomplete());
+    }
+
+    private record SignatureScan(int interfaces, List<String> incomplete) {
+    }
+
+    private static SignatureScan scanSignatureCoverage(Path root) throws IOException {
+        Map<String, Boolean> complete = new LinkedHashMap<>();
+        Map<String, String> firstSeen = new LinkedHashMap<>();
+        for (Path doc : answerDocs(root)) {
+            for (Span span : codeSpans(Files.readString(doc))) {
+                String raw = span.text();
+                Matcher m = CALL_SPAN.matcher(raw);
+                if (!m.matches()) {
+                    continue;
+                }
+                String key = m.group(1) + "." + m.group(2);
+                boolean full = !raw.contains("...") && !raw.contains("…");
+                complete.merge(key, full, Boolean::logicalOr);
+                firstSeen.putIfAbsent(key, rel(root, doc) + ":" + span.line());
+            }
+        }
+        List<String> incomplete = new ArrayList<>();
+        complete.forEach((key, full) -> {
+            if (!full) {
+                incomplete.add("  " + key + "（首次出现在 " + firstSeen.get(key) + "）");
+            }
+        });
+        return new SignatureScan(complete.size(), incomplete);
+    }
+
     // ---------------------------------------------------------------- 工具
 
     /** 一个 code span 及其所在行号。 */
